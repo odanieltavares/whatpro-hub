@@ -1,0 +1,69 @@
+# WhatPro Hub
+
+# Dependencies
+node_modules/
+vendor/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docker (keep compose but ignore data)
+*.tar
+docker-data/
+
+# Go
+*.test
+*.out
+__debug_bin*
+
+# Sensitive
+*.pem
+*.key
+*.crt
+secrets/
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Documentation generated
+docs/whatpro_manager/
+docs/chatwoot_demo_generator/
