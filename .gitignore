@@ -31,7 +31,14 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.production  # CRITICAL: Never commit production secrets
 !.env.example
+!.env.production.example
+
+# Backups
+backups/
+*.dump
+*.rdb
 
 # Logs
 *.log
@@ -67,3 +74,11 @@ temp/
 # Documentation generated
 docs/whatpro_manager/
 docs/chatwoot_demo_generator/
+
+
+# AI Agents (credentials/tokens)
+.claude/
+.gemini/
+
+# Swagger (Keep generated docs)
+!apps/api/docs/

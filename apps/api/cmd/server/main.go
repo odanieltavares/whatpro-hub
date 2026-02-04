@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,13 +18,46 @@ import (
 	"whatpro-hub/internal/config"
 	"whatpro-hub/internal/handlers"
 	"whatpro-hub/internal/middleware"
+	"whatpro-hub/internal/migrations"
+
+	// Swagger
+	"github.com/gofiber/swagger"
+	_ "whatpro-hub/docs" // Import docs for side effects
 )
 
+// @title WhatPro Hub API
+// @version 1.0
+// @description Enterprise WhatsApp Manager & Kanban CRM API
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@whatpro.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @schemes http
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// =========================================================================
+	// Security Validation (Production)
+	// =========================================================================
+	if cfg.Env == "production" {
+		// Validate CORS is not wildcard in production
+		if cfg.CORSOrigins == "*" {
+			log.Fatal("SECURITY ERROR: CORS wildcard (*) is not allowed in production. Set CORS_ORIGINS to specific domains.")
+		}
+		// Validate JWT secret is set
+		if cfg.JWTSecret == "" || cfg.JWTSecret == "your-super-secret-jwt-key-change-in-production" {
+			log.Fatal("SECURITY ERROR: JWT_SECRET must be set to a strong secret in production")
+		}
 	}
 
 	// Initialize Fiber app
@@ -34,22 +68,25 @@ func main() {
 		IdleTimeout:           120 * time.Second,
 		DisableStartupMessage: cfg.Env == "production",
 		ErrorHandler:          handlers.ErrorHandler,
+		// Enable trusted proxy headers (X-Forwarded-For, X-Real-IP)
+		EnableTrustedProxyCheck: cfg.Env == "production",
+		TrustedProxies:          parseTrustedProxies(cfg),
 	})
 
-	// Global middleware
+	// =========================================================================
+	// Global Middleware (Order Matters!)
+	// =========================================================================
+
+	// 1. Recovery - catch panics and return 500
 	app.Use(recover.New())
+
+	// 2. Request Logger
 	app.Use(logger.New(logger.Config{
 		Format:     "${time} | ${status} | ${latency} | ${ip} | ${method} | ${path}\n",
 		TimeFormat: "2006-01-02 15:04:05",
 	}))
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.CORSOrigins,
-		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
-		AllowCredentials: true,
-	}))
 
-	// Initialize database connection
+	// Initialize database connection (needed for handlers)
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -58,7 +95,50 @@ func main() {
 	// Initialize Redis connection
 	rdb, err := config.InitRedis(cfg)
 	if err != nil {
-		log.Printf("Warning: Failed to connect to Redis: %v", err)
+		log.Printf("Warning: Failed to connect to Redis: %v - Rate limiting will use in-memory storage", err)
+	}
+
+	// 3. IP-Based Rate Limiting (BEFORE authentication)
+	// Protects against DDoS and brute force attacks
+	rateLimitPerMinute := getEnvInt("RATE_LIMIT_PER_MINUTE", 100)
+	useRedisStorage := rdb != nil && cfg.Env == "production"
+	
+	app.Use(middleware.NewIPRateLimiter(middleware.RateLimiterConfig{
+		MaxPerMinute: rateLimitPerMinute,
+		UseRedis:     useRedisStorage,
+		RedisClient:  rdb,
+		SkipPaths:    []string{"/health", "/metrics"},
+	}))
+
+	// 4. CORS Configuration
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: cfg.CORSOrigins,
+		AllowOriginsFunc: func(origin string) bool {
+			// In production, strictly validate against whitelist
+			if cfg.Env == "production" {
+				allowedOrigins := strings.Split(cfg.CORSOrigins, ",")
+				for _, allowed := range allowedOrigins {
+					if strings.TrimSpace(allowed) == origin {
+						return true
+					}
+				}
+				return false
+			}
+			// In development, allow localhost
+			return strings.HasPrefix(origin, "http://localhost") || 
+			       strings.HasPrefix(origin, "http://127.0.0.1")
+		},
+		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,X-Request-ID",
+		AllowCredentials: cfg.CORSOrigins != "*",
+		MaxAge:           86400, // 24 hours
+	}))
+
+	// Run migrations (only in development for safety)
+	if cfg.Env == "development" {
+		if err := migrations.RunMigrations(db); err != nil {
+			log.Fatalf("Failed to run migrations: %v", err)
+		}
 	}
 
 	// Initialize handlers
@@ -68,23 +148,46 @@ func main() {
 	// Routes
 	// =========================================================================
 
-	// Health checks (public)
+	// Health checks (public - no rate limiting)
 	app.Get("/health/live", h.HealthLive)
 	app.Get("/health/ready", h.HealthReady)
 	app.Get("/health/deep", h.HealthDeep)
 	app.Get("/metrics", h.Metrics)
 
+	app.Get("/metrics", h.Metrics)
+
+	// Swagger Docs
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
 	// API v1
 	api := app.Group("/api/v1")
+
+	// Billing
+	billing := api.Group("/billing")
+	billing.Post("/subscribe", h.SubscribeAccount)
 
 	// Auth routes (public)
 	auth := api.Group("/auth")
 	auth.Post("/sso", h.AuthSSO)
 	auth.Post("/refresh", h.AuthRefresh)
 
-	// Protected routes
+	// Webhooks (public - Chatwoot will call these)
+	webhookHandler := handlers.NewWebhookHandler(cfg)
+	webhooks := api.Group("/webhooks")
+	webhooks.Post("/chatwoot", webhookHandler.HandleChatwootWebhook)
+	webhooks.Post("/evolution/:instanceId", h.HandleEvolutionWebhook) 
+	webhooks.Post("/asaas", h.HandleAsaasWebhook) // NEW: Payment Webhook
+	webhooks.Post("/test", webhookHandler.HandleWebhookTest) 
+
+	// =========================================================================
+	// Protected routes (requires JWT authentication)
+	// =========================================================================
 	protected := api.Group("")
 	protected.Use(middleware.JWT(cfg.JWTSecret))
+
+	// 5. Role-Based Rate Limiting (AFTER authentication)
+	// Applies different limits based on user role
+	protected.Use(middleware.NewRoleRateLimiter(rdb))
 
 	// Auth (protected)
 	protected.Post("/auth/logout", h.AuthLogout)
@@ -96,6 +199,7 @@ func main() {
 	accounts.Get("/:id", middleware.RequireRole("admin", "super_admin"), h.GetAccount)
 	accounts.Post("/", middleware.RequireRole("super_admin"), h.CreateAccount)
 	accounts.Put("/:id", middleware.RequireRole("admin", "super_admin"), h.UpdateAccount)
+	accounts.Post("/sync", middleware.RequireRole("super_admin"), h.SyncAccounts)
 
 	// Teams
 	teams := protected.Group("/accounts/:accountId/teams")
@@ -152,11 +256,7 @@ func main() {
 	cards.Post("/:id/move", h.MoveCard)
 	cards.Delete("/:id", middleware.RequireRole("admin", "super_admin"), h.DeleteCard)
 
-	// Webhooks (from Chatwoot)
-	webhooks := api.Group("/webhooks")
-	webhooks.Post("/chatwoot", h.ChatwootWebhook)
-
-	// Chatwoot Proxy (for frontend to call Chatwoot APIs)
+	// Chatwoot Proxy (for frontend to call Chatwoot APIs through our API)
 	chatwoot := protected.Group("/chatwoot")
 	chatwoot.All("/*", h.ChatwootProxy)
 
@@ -167,7 +267,8 @@ func main() {
 	// Start server in goroutine
 	go func() {
 		addr := ":" + cfg.Port
-		log.Printf("🚀 WhatPro Hub API starting on %s", addr)
+		log.Printf("🚀 WhatPro Hub API starting on %s (env: %s)", addr, cfg.Env)
+		log.Printf("🛡️ Security: Rate limiting %d req/min, CORS: %s", rateLimitPerMinute, cfg.CORSOrigins)
 		if err := app.Listen(addr); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -189,4 +290,41 @@ func main() {
 	}
 
 	log.Println("Server exited properly")
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// getEnvInt gets an environment variable as int or returns a default
+func getEnvInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	var result int
+	if _, err := os.Stdout.WriteString(""); err == nil {
+		// Parse int
+		for _, c := range value {
+			if c >= '0' && c <= '9' {
+				result = result*10 + int(c-'0')
+			} else {
+				return defaultValue
+			}
+		}
+	}
+	if result == 0 {
+		return defaultValue
+	}
+	return result
+}
+
+// parseTrustedProxies parses trusted proxies from config
+func parseTrustedProxies(cfg *config.Config) []string {
+	trustedProxies := os.Getenv("TRUSTED_PROXIES")
+	if trustedProxies == "" {
+		// Default Docker/Traefik network
+		return []string{"172.20.0.0/24", "172.21.0.0/24"}
+	}
+	return strings.Split(trustedProxies, ",")
 }

@@ -2,6 +2,12 @@
 
 **Plataforma de integração nativa com Chatwoot para gestão de atendimento, automação e operações.**
 
+> **Novidades (v1.1):**
+>
+> - 🚀 **WhatPro Gateway**: Roteamento de mensagens nativo (substitui N8N para mensageria básica).
+> - 📊 **Kanban Pipeline**: Gestão visual de leads e oportunidades.
+> - 📱 **WhatPro Manager**: Interface administrativa para gestão de instâncias WhatsApp (Evolution/Uazapi).
+
 ## 🚀 Quick Start
 
 ### Pré-requisitos
@@ -38,12 +44,12 @@ docker-compose logs -f
 
 ### 3. Acesse os Serviços
 
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| **Chatwoot** | http://localhost:8080 | Plataforma de atendimento |
-| **WhatPro Hub API** | http://localhost:3001 | API do Hub |
-| **Portainer** | http://localhost:9000 | Gerenciador Docker |
-| **Traefik Dashboard** | http://localhost:8081 | Proxy reverso |
+| Serviço               | URL                   | Descrição                 |
+| --------------------- | --------------------- | ------------------------- |
+| **Chatwoot**          | http://localhost:8080 | Plataforma de atendimento |
+| **WhatPro Hub API**   | http://localhost:3001 | API do Hub                |
+| **Portainer**         | http://localhost:9000 | Gerenciador Docker        |
+| **Traefik Dashboard** | http://localhost:8081 | Proxy reverso             |
 
 ### 4. Primeiro Acesso ao Chatwoot
 
@@ -86,14 +92,14 @@ whatpro-hub/
 
 ## 🛠️ Stack Tecnológica
 
-| Componente | Tecnologia | Versão |
-|------------|------------|--------|
-| **Backend** | Go + Fiber | 1.22 |
-| **Database** | PostgreSQL + pgvector | 16 |
-| **Cache/Queue** | Redis | 7 |
-| **Chat Platform** | Chatwoot | v4.10.0 |
-| **Proxy** | Traefik | v3.5.3 |
-| **Container Management** | Portainer CE | latest |
+| Componente               | Tecnologia            | Versão  |
+| ------------------------ | --------------------- | ------- |
+| **Backend**              | Go + Fiber            | 1.22    |
+| **Database**             | PostgreSQL + pgvector | 16      |
+| **Cache/Queue**          | Redis                 | 7       |
+| **Chat Platform**        | Chatwoot              | v4.10.0 |
+| **Proxy**                | Traefik               | v3.5.3  |
+| **Container Management** | Portainer CE          | latest  |
 
 ---
 
@@ -176,6 +182,10 @@ GET    /api/v1/accounts/:id/boards
 GET    /api/v1/boards/:id/stages
 GET    /api/v1/boards/:id/cards
 POST   /api/v1/boards/:id/cards/:id/move
+
+# Gateway (Messaging)
+POST   /api/v1/webhooks/evolution/:instanceId  # Ingestão de mensagens (Evolution API)
+POST   /api/v1/webhooks/uazapi/:instanceId     # Ingestão de mensagens (Uazapi)
 ```
 
 ---

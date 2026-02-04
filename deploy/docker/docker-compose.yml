@@ -1,15 +1,15 @@
 version: "3.8"
 
 # ============================================================================
-# WHATPRO HUB - Production-like Docker Stack
+# WHATPRO HUB - Production-Ready Docker Stack
 # ============================================================================
-# Stack:
-#   - PostgreSQL 16 with pgvector (AI/Vector search ready)
-#   - Redis 7 (Cache, Sessions, Pub/Sub, Job Queue)
-#   - Chatwoot v4.10.0 (App + Sidekiq)
-#   - Traefik v3.5.3 (Reverse Proxy, SSL, Load Balancer)
-#   - WhatPro Hub API (Go + Fiber)
-#   - Portainer CE (Docker Management)
+# Security Features:
+#   - Network isolation (DB/Redis not exposed externally)
+#   - Redis authentication
+#   - Security headers via Traefik
+#   - Resource limits
+#   - Health checks
+#   - Log rotation
 # ============================================================================
 
 services:
@@ -22,50 +22,79 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-5deb2960472a61ef93371ea2b1082cdd}
-      POSTGRES_DB: whatpro_hub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-whatpro_hub}
+      # Security: reject non-SSL connections in production
+      PGSSLMODE: ${PGSSLMODE:-prefer}
     volumes:
       - pgvector_data:/var/lib/postgresql/data
       - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     networks:
-      - agent_network
-    ports:
-      - "5432:5432"
+      - backend
+    # SECURITY: Ports NOT exposed to host - internal access only
+    expose:
+      - "5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
           cpus: "2"
           memory: 2048M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
 
   # ==========================================================================
-  # 📦 CACHE & QUEUE - Redis 7
+  # 📦 CACHE & QUEUE - Redis 7 with Authentication
   # ==========================================================================
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: whatpro_redis
     restart: unless-stopped
-    command: [ "redis-server", "--appendonly", "yes", "--port", "6379", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru" ]
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
-      - agent_network
-    ports:
-      - "6379:6379"
+      - backend
+    # SECURITY: Ports NOT exposed to host - internal access only
+    expose:
+      - "6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$REDIS_PASSWORD", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
     deploy:
       resources:
         limits:
           cpus: "1"
           memory: 1024M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
 
   # ==========================================================================
   # 💬 CHATWOOT APP
@@ -75,13 +104,14 @@ services:
     container_name: whatpro_chatwoot_app
     restart: unless-stopped
     command: >
-      sh -c "echo 'Rails.application.config.active_storage.variant_processor = :mini_magick' > /app/config/initializers/active_storage.rb && bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
+      sh -c "rm -f /app/lib/tasks/auto_annotate_models.rake && echo 'Rails.application.config.active_storage.variant_processor = :mini_magick' > /app/config/initializers/active_storage.rb && bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
     entrypoint: docker/entrypoints/rails.sh
     volumes:
       - chatwoot_storage:/app/storage
       - chatwoot_public:/app/public
     networks:
-      - agent_network
+      - backend
+      - frontend
     depends_on:
       pgvector:
         condition: service_healthy
@@ -90,24 +120,24 @@ services:
     environment:
       # 🏢 Installation
       - INSTALLATION_NAME=whatpro
-      - SECRET_KEY_BASE=${CHATWOOT_SECRET_KEY:-15bedcf66da950861bc2a4f80ef88c5e}
+      - SECRET_KEY_BASE=${CHATWOOT_SECRET_KEY_BASE}
 
       # 💬 URLs
-      - FRONTEND_URL=http://localhost:8080
-      - CHATWOOT_HUB_URL=http://localhost:8080/
-      - FORCE_SSL=false
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      - CHATWOOT_HUB_URL=${FRONTEND_URL:-http://localhost:8080}/
+      - FORCE_SSL=${FORCE_SSL:-false}
 
       # 🌍 Locale
       - DEFAULT_LOCALE=pt_BR
       - TZ=America/Sao_Paulo
 
-      # 🧑💻 Redis
-      - REDIS_URL=redis://redis:6379
+      # 🧑💻 Redis (with auth)
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
 
       # 🗄️ PostgreSQL
       - POSTGRES_HOST=pgvector
       - POSTGRES_USERNAME=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-5deb2960472a61ef93371ea2b1082cdd}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot
 
       # 🏠 Storage
@@ -118,27 +148,36 @@ services:
       - RACK_TIMEOUT_SERVICE_TIMEOUT=0
       - RAILS_MAX_THREADS=5
       - WEB_CONCURRENCY=2
-      - ENABLE_RACK_ATTACK=false
+      - ENABLE_RACK_ATTACK=${ENABLE_RACK_ATTACK:-true}
 
       # ⚡ Rails
-      - NODE_ENV=production
-      - RAILS_ENV=production
+      - NODE_ENV=${APP_ENV:-production}
+      - RAILS_ENV=${APP_ENV:-production}
       - INSTALLATION_ENV=docker
       - RAILS_LOG_TO_STDOUT=true
       - USE_INBOX_AVATAR_FOR_BOT=true
-      - ENABLE_ACCOUNT_SIGNUP=true # Enable for local dev
+      - ENABLE_ACCOUNT_SIGNUP=${ENABLE_ACCOUNT_SIGNUP:-false}
     ports:
       - "8080:3000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.chatwoot.rule=Host(`chat.localhost`)"
+      - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN:-chat.localhost}`)"
       - "traefik.http.routers.chatwoot.entrypoints=web"
       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
     deploy:
       resources:
         limits:
-          cpus: "1"
-          memory: 1024M
+          cpus: "1.5"
+          memory: 1536M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
 
   # ==========================================================================
   # ⚙️ CHATWOOT SIDEKIQ (Background Jobs)
@@ -152,7 +191,7 @@ services:
       - chatwoot_storage:/app/storage
       - chatwoot_public:/app/public
     networks:
-      - agent_network
+      - backend
     depends_on:
       pgvector:
         condition: service_healthy
@@ -163,21 +202,21 @@ services:
     environment:
       # Same as chatwoot_app
       - INSTALLATION_NAME=whatpro
-      - SECRET_KEY_BASE=${CHATWOOT_SECRET_KEY:-15bedcf66da950861bc2a4f80ef88c5e}
-      - FRONTEND_URL=http://localhost:8080
-      - FORCE_SSL=false
+      - SECRET_KEY_BASE=${CHATWOOT_SECRET_KEY_BASE}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      - FORCE_SSL=${FORCE_SSL:-false}
       - DEFAULT_LOCALE=pt_BR
       - TZ=America/Sao_Paulo
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - POSTGRES_HOST=pgvector
       - POSTGRES_USERNAME=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-5deb2960472a61ef93371ea2b1082cdd}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DATABASE=chatwoot
       - ACTIVE_STORAGE_SERVICE=local
       - SIDEKIQ_CONCURRENCY=10
       - RAILS_MAX_THREADS=5
-      - NODE_ENV=production
-      - RAILS_ENV=production
+      - NODE_ENV=${APP_ENV:-production}
+      - RAILS_ENV=${APP_ENV:-production}
       - INSTALLATION_ENV=docker
       - RAILS_LOG_TO_STDOUT=true
     deploy:
@@ -185,50 +224,118 @@ services:
         limits:
           cpus: "1"
           memory: 1024M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
 
   # ==========================================================================
   # 🚀 WHATPRO HUB API (Go + Fiber)
   # ==========================================================================
   whatpro_api:
     build:
-      context: ../apps/api
+      context: ../../apps/api
       dockerfile: Dockerfile
     image: whatpro/hub-api:latest
     container_name: whatpro_api
     restart: unless-stopped
     networks:
-      - agent_network
+      - backend
+      - frontend
     depends_on:
       pgvector:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - APP_ENV=development
+      - APP_ENV=${APP_ENV:-production}
       - APP_PORT=3000
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-5deb2960472a61ef93371ea2b1082cdd}@pgvector:5432/whatpro_hub?sslmode=disable
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@pgvector:5432/${POSTGRES_DB:-whatpro_hub}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - CHATWOOT_URL=http://chatwoot_app:3000
-      - CHATWOOT_API_KEY=${CHATWOOT_API_KEY:-}
-      - JWT_SECRET=${JWT_SECRET:-whatpro-hub-jwt-secret-change-in-production}
-      - CORS_ORIGINS=http://localhost:3001,http://localhost:8080
+      - CHATWOOT_API_KEY=${CHATWOOT_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
     ports:
       - "4000:3000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.whatpro-api.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.whatpro-api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
       - "traefik.http.routers.whatpro-api.entrypoints=web"
       - "traefik.http.services.whatpro-api.loadbalancer.server.port=3000"
+      # Security headers
+      - "traefik.http.middlewares.security-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.security-headers.headers.browserxssfilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.routers.whatpro-api.middlewares=security-headers"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
     deploy:
       resources:
         limits:
           cpus: "1"
           memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+
+  # ==========================================================================
+  # ⚙️ WHATPRO HUB WORKER (Background Jobs)
+  # ==========================================================================
+  whatpro_worker:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    image: whatpro/hub-api:latest
+    container_name: whatpro_worker
+    restart: unless-stopped
+    command: ["./whatpro-worker"]
+    networks:
+      - backend
+    depends_on:
+      pgvector:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@pgvector:5432/${POSTGRES_DB:-whatpro_hub}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - CHATWOOT_URL=http://chatwoot_app:3000
+      - CHATWOOT_API_KEY=${CHATWOOT_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
 
   # ==========================================================================
   # 🔀 TRAEFIK - Reverse Proxy & Load Balancer
@@ -238,34 +345,52 @@ services:
     container_name: whatpro_traefik
     restart: unless-stopped
     command:
+      # API
       - "--api.dashboard=true"
-      - "--api.insecure=true"
+      # Providers
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      # Entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      # Logging
       - "--log.level=INFO"
+      - "--accesslog=true"
+      # Metrics
+      - "--metrics.prometheus=true"
+      # Let's Encrypt (uncomment for production)
+      # - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
+      # - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080" # Traefik Dashboard
+      - "8081:8080" # Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_certs:/letsencrypt
     networks:
-      - agent_network
+      - frontend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      # Dashboard with BasicAuth
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN:-traefik.localhost}`)"
       - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_AUTH_USER:-admin:$$apr1$$8eVvvpyO$$z7TqKkN9V8Y6y9zw7QjHg1}"
     deploy:
       resources:
         limits:
           cpus: "0.5"
           memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
   # ==========================================================================
-  # 🎛️ PORTAINER - Docker Management UI
+  # 🎛️ PORTAINER - Docker Management UI (Optional - Disable in production)
   # ==========================================================================
   portainer:
     image: portainer/portainer-ce:latest
@@ -275,13 +400,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     networks:
-      - agent_network
+      - frontend
     ports:
-      - "9443:9443"
-      - "9000:9000"
+      - "${PORTAINER_HTTPS_PORT:-9443}:9443"
+      - "${PORTAINER_HTTP_PORT:-9000}:9000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.localhost`)"
+      - "traefik.http.routers.portainer.rule=Host(`${PORTAINER_DOMAIN:-portainer.localhost}`)"
       - "traefik.http.routers.portainer.entrypoints=web"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
     deploy:
@@ -289,6 +414,14 @@ services:
         limits:
           cpus: "0.5"
           memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    # NOTE: Consider removing Portainer in production for security
+    profiles:
+      - monitoring
 
 # ============================================================================
 # 📁 VOLUMES
@@ -311,6 +444,17 @@ volumes:
 # 🌐 NETWORKS
 # ============================================================================
 networks:
-  agent_network:
+  # Backend network - isolated (DB, Redis, internal services)
+  backend:
     driver: bridge
-    name: agent_network
+    internal: false # Set to true for full isolation (requires bastion/VPN)
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+  # Frontend network - public-facing services
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24

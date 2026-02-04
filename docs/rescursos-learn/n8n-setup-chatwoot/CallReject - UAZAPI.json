@@ -1,0 +1,434 @@
+{
+  "name": "CallReject - UAZAPI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatpro-TOCall-PROD",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "5cf7f4b4-158a-4f50-9b27-e6b5ce126111",
+      "name": "Uazapi Webhook",
+      "webhookId": "a80675e2-06d3-4789-82f3-6f54c9b1134f",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('FormatDados').item.json.BaseUrl}}/call/reject",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $('FormatDados').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('FormatDados').item.json.number }}"
+            },
+            {
+              "name": "id",
+              "value": "={{ $('FormatDados').item.json.CallID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        -16
+      ],
+      "id": "bd46c5a8-6b8a-4a41-b38a-57b2dc4560db",
+      "name": "CallReject"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "844d8f90-d523-45be-a7f5-fc6e4d563d6d",
+              "leftValue": "={{ $('Wait2').item.json.response }}",
+              "rightValue": "=Call rejected",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        208
+      ],
+      "id": "60dedaf0-28f0-474f-8bce-8d565f5d4ba3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('FormatDados').item.json.BaseUrl }}/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $('FormatDados').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('FormatDados').item.json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "=Olá {{ $('SendSaudacao').item.json.saudacao }}! 😅\nVi sua ligação agora há pouco.\nAqui atendemos apenas por mensagem no computador 👨🏻‍💻.\n\nMas relaxa que te respondo rapidinho 😄."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        -288
+      ],
+      "id": "e420397b-9aa8-44d1-9711-6e02bba524b0",
+      "name": "SendMsg AVISO"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5f16b33-2414-4d1e-8910-1c5d99d7e15b",
+              "name": "number",
+              "value": "={{ (() => {\n  const raw = ($('Uazapi Webhook').item.json.body.event.CallCreator ?? '').toString().trim();\n\n  // 1) Mantém JIDs @lid intactos\n  if (/@lid$/i.test(raw)) return raw;\n\n  // 2) Para @s.whatsapp.net: limpar e ajustar o 9\n  if (/@s\\.whatsapp\\.net$/i.test(raw)) {\n    const digits = raw.replace(/@.*/,'').replace(/\\D/g,''); // só números (sem @...)\n    if (digits.startsWith('55')) {\n      const ddd = digits.slice(2,4);\n      const local = digits.slice(4);\n      // se vier sem o 9 (8 dígitos), insere; se já tiver 9 dígitos, mantém\n      return local.length === 8 ? `55${ddd}9${local}` : digits;\n    }\n    return digits; // não-BR: só retorna limpo\n  }\n\n  // 3) Outros casos: retorna como veio\n  return raw;\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "e96bc4ac-229e-4ad4-ae17-3836b5777ec0",
+              "name": "CallID",
+              "value": "={{ $('Uazapi Webhook').item.json.body.event.CallID }}",
+              "type": "string"
+            },
+            {
+              "id": "2553fef9-b4dc-442e-83d9-fc7f8ec7cbd6",
+              "name": "BaseUrl",
+              "value": "={{ $('Uazapi Webhook').item.json.body.BaseUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "736b172a-049f-49e0-8614-83a895639296",
+              "name": "instanceName",
+              "value": "={{ $('Uazapi Webhook').item.json.body.instanceName }}",
+              "type": "string"
+            },
+            {
+              "id": "205e954c-0ebb-4a79-a654-6d595810b2db",
+              "name": "token",
+              "value": "={{ $('Uazapi Webhook').item.json.body.token }}",
+              "type": "string"
+            },
+            {
+              "id": "56b68b3d-ea31-44ad-8cea-fa925d5d0d17",
+              "name": "typeAction",
+              "value": "={{ $('Uazapi Webhook').item.json.body.type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        -16
+      ],
+      "id": "788240d2-2ea8-4df2-9c61-eddb5ae6d5d1",
+      "name": "FormatDados"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        768,
+        96
+      ],
+      "id": "969639bb-9f2f-4baf-be28-1e46fcf300c3",
+      "name": "No Operation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node (n8n) – Saudação + mensagem Bicimotos\n// Fuso: America/Sao_Paulo (pode sobrescrever via env TZ_SAOPAULO)\n\nconst timeZone = $env.TZ_SAOPAULO || 'America/Sao_Paulo';\n\n// Hora local SP (0–23)\nconst hour = Number(\n  new Intl.DateTimeFormat('pt-BR', { timeZone, hour: 'numeric', hour12: false })\n    .format(new Date())\n);\n\n// Saudação por faixa\nlet saudacao = 'Boa noite';\nif (hour >= 5 && hour < 12) saudacao = 'Bom dia';\nelse if (hour >= 12 && hour < 18) saudacao = 'Boa tarde';\n\n// Tente pegar o nome do contato, se existir em algum campo anterior\n// Ajuste a linha abaixo conforme seu payload (ex.: $json.event?.pushName)\n// Se não tiver nome, fica vazio sem quebrar a mensagem\nconst nome = ($json.nome || $json.event?.pushName || '').toString().trim();\n\nreturn [\n  {\n    json: {\n      saudacao      \n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -112
+      ],
+      "id": "e26f6f8a-2cfb-44d9-b9e4-90d9665f0066",
+      "name": "SendSaudacao"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('FormatDados').item.json.BaseUrl }}/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $('FormatDados').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('FormatDados').item.json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "=> *Me manda por gentileza:*\n\n1. Qual *peça ou produto*.\n2. *modelo/ano* da moto!\n3. e quantidade... \n\nSe preferir, pode *enviar foto da peça.* Que logo te responderemos ! 🏍️💨"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -48
+      ],
+      "id": "8fda7d0c-5e65-4cae-be4a-0756debb08b3",
+      "name": "SendMsg AVISO1"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1024,
+        -48
+      ],
+      "id": "3607d56b-ef90-4c94-8aa2-a7a37046b03f",
+      "name": "Wait",
+      "webhookId": "824ba71e-99b6-4732-bb03-5303bca4f118"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        -240
+      ],
+      "id": "ceeb1eb0-eaa0-41df-95c2-0c006124ffca",
+      "name": "Wait1",
+      "webhookId": "824ba71e-99b6-4732-bb03-5303bca4f118"
+    },
+    {
+      "parameters": {
+        "amount": 2.5
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        208
+      ],
+      "id": "4dfd8f31-e51a-4e86-8ebd-eb921d05d83c",
+      "name": "Wait2",
+      "webhookId": "824ba71e-99b6-4732-bb03-5303bca4f118"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Uazapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "FormatDados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallReject": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "SendSaudacao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatDados": {
+      "main": [
+        [
+          {
+            "node": "CallReject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendMsg AVISO": {
+      "main": [
+        []
+      ]
+    },
+    "SendSaudacao": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "SendMsg AVISO1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "SendMsg AVISO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 30,
+    "availableInMCP": false
+  },
+  "versionId": "fb699603-dede-43ee-8e28-47ddd0475614",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e23f3221c9c13f410dedd6480997c7f1b273c096ebf708d184a8b0c24cf67206"
+  },
+  "id": "nbx5vrDBZArmpgKd",
+  "tags": [
+    {
+      "createdAt": "2025-02-06T10:11:38.193Z",
+      "updatedAt": "2025-02-06T10:11:38.193Z",
+      "id": "giucuooCzPVyIkng",
+      "name": "Whatpro"
+    },
+    {
+      "createdAt": "2025-10-17T11:42:11.665Z",
+      "updatedAt": "2025-10-17T11:42:11.665Z",
+      "id": "M533Cwcccnhc2pS9",
+      "name": "Uazapi"
+    }
+  ]
+}

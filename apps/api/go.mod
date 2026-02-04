@@ -11,6 +11,10 @@ require (
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.8
 	github.com/google/uuid v1.6.0
+	github.com/hibiken/asynq v0.24.1
+	github.com/lib/pq v1.10.9
+	github.com/go-playground/validator/v10 v10.22.1
+	github.com/gofiber/storage/redis/v3 v3.1.0
 )
 
 require (

@@ -9,13 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// SSORequest represents the SSO login request
-type SSORequest struct {
-	AccessToken string `json:"access_token" validate:"required"`
-	Client      string `json:"client" validate:"required"`
-	UID         string `json:"uid" validate:"required,email"`
-}
-
 // AuthResponse represents the authentication response
 type AuthResponse struct {
 	Token     string       `json:"token"`
@@ -32,7 +25,7 @@ func (h *Handler) AuthSSO(c *fiber.Ctx) error {
 	}
 
 	// Validate against Chatwoot
-	client := chatwoot.New(h.Config.ChatwootURL, req.AccessToken)
+	client := chatwoot.New(h.Config.ChatwootURL, req.Token)
 	cwUser, err := client.ValidateToken()
 	if err != nil {
 		return h.Error(c, fiber.StatusUnauthorized, "Invalid Chatwoot token")

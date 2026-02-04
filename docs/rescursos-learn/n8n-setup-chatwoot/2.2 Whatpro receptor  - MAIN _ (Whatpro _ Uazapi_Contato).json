@@ -1,0 +1,2478 @@
+{
+  "name": "2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1376,
+        816
+      ],
+      "id": "e24c31fc-faab-4de9-aac1-d2d10f38a6f1",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cec82ea9-82fb-4aa7-8f9d-6c0424afe3a1",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor?.eventType ?? '' }}",
+                    "rightValue": "TYPING_EVENT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Typing Event"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "df37d6e6-d2f1-45e7-a2b4-a9f755c34321",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor?.eventType ?? '' }}",
+                    "rightValue": "DELETED_MESSAGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Deletion"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7fe9ec75-f2f1-4cf7-ab94-a9d16545c7d7",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor?.eventType ?? '' }}",
+                    "rightValue": "SYSTEM_COMMAND",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Command"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "57b39e1f-1f4e-415f-a88f-fa028b1bcf2c",
+                    "leftValue": "={{ $('Redis - Queue Processor').isExecuted ? $('Redis - Queue Processor').item.json.switchProcessor.eventType : '' }}",
+                    "rightValue": "REACTION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reaction"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "386065de-62c2-4404-ad68-6dc5301794d6",
+                    "leftValue": "={{ $('Redis - Queue Processor').isExecuted ? $('Redis - Queue Processor').item.json.switchProcessor.eventType : '' }}",
+                    "rightValue": "VALID_OUTGOING_TEXT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Redis - Queue Processor').isExecuted ? $('Redis - Queue Processor').item.json.switchProcessor.eventType : '' }}",
+                    "rightValue": "VALID_OUTGOING_MEDIA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1d706489-3a54-4088-a2e0-30713981692b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Attachment"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2080,
+        832
+      ],
+      "id": "92429f9d-7650-452f-9c3f-e9b749f29a29",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "data",
+        "key": "=api:instance:{{ $('Get Inbox Token').item.json.data || $('Nml - Instance Token to Cache').item.json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        288,
+        992
+      ],
+      "id": "f140b4fb-cac9-453f-ac8a-20350b456216",
+      "name": "Get Instance Chatwoot Data",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('Get Instance Chatwoot Data').item.json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        992
+      ],
+      "id": "9bea12ac-924d-4990-9620-565cb0a20371",
+      "name": "Nml - Instance Chatwoot Cached Data"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "data",
+        "key": "={{ $('Redis Keys').item.json.redisKey.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        864
+      ],
+      "id": "e46c5bbf-ce88-4dde-b86a-3885565b95b2",
+      "name": "Get Inbox Token",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "29933430-de0f-47d5-ad7c-3b03ab55bae7",
+              "leftValue": "={{ $('Get Inbox Token').item.json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        864
+      ],
+      "id": "9d084bab-d349-461a-8311-9ffd438725e7",
+      "name": "No data?1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "256ddb1b-d5d4-4310-a2fb-4599d80ab4c8",
+              "name": "redisKey",
+              "value": "={{ $('Mrg - Input Data').item.json.extra.installationUrl }}:token:acc{{ $('Mrg - Input Data').item.json.extra.accountId }}:i{{ $('Mrg - Input Data').item.json.extra.contac_inbox.inbox_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2891878-0192-47e2-b88a-67c7034f081e",
+              "name": "inboxKey",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -112,
+        672
+      ],
+      "id": "cc67b2ca-9362-4f78-b4de-a6c3a6ff8c49",
+      "name": "Redis Keys"
+    },
+    {
+      "parameters": {
+        "databaseId": "={{ 2 }}",
+        "tableId": "={{ 2 }}",
+        "returnAll": true,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": "={{ 5 }}",
+                "operator": "contains",
+                "value": "={{ $('Mrg - Input Data').item.json.extra.contac_inbox.inbox_id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        288,
+        736
+      ],
+      "id": "b5ed252a-4576-4278-868f-c0f172617ecf",
+      "name": "Filter By Inbox ID",
+      "alwaysOutputData": true,
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "47d2f24b-4884-4ec1-aeb0-da819727d746",
+              "leftValue": "={{ $('Filter By Inbox ID').item.json['Chatwoot Account Id'][0].value.toNumber() }}",
+              "rightValue": "={{ $('Mrg - Input Data').item.json.extra.accountId }}",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        464,
+        736
+      ],
+      "id": "d5d0e0d8-5bd9-414b-8ce9-a232b40b39a1",
+      "name": "Filter By Account Id",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Redis Keys').item.json.redisKey.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}",
+        "value": "={{ $('Nml - Instance Token to Cache').item.json.data }}",
+        "expire": true,
+        "ttl": 2592000
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        752
+      ],
+      "id": "976d9302-8688-4044-9edd-bd45756c0aad",
+      "name": "Cache Inbox Token (30D)",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "14d5054c-2f2b-4feb-8357-bead61bc7519",
+              "leftValue": "={{ $('Filter By Account Id').item.json['Instance Token'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        736
+      ],
+      "id": "405ce74a-573a-4afb-b030-0775c0bcf495",
+      "name": "No data?2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "784a37e2-c5d3-4bcf-822a-96998e5d7ab7",
+              "name": "=data",
+              "value": "={{ $('Filter By Account Id').item.json['Instance Token'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        848,
+        752
+      ],
+      "id": "41eed5f3-e03f-49cc-ab06-764de964a020",
+      "name": "Nml - Instance Token to Cache"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Nml - Inbox Event').item.json.message.chatId }}\",\n  \"text\": {{ $('Nml - Inbox Event').item.json.message.content.toJsonString() }},\n  \"readchat\": true\n  {{\n      $('Nml - Inbox Event').item.json.message.inReplyTo.isReply && \n        $('Execute a SQL query').item.json.stanza_id ? \n      ',\"replyid\": \"' + $('Execute a SQL query').item.json.stanza_id.replace('MID:','') + '\"' : ''\n  }}\n}\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        848
+      ],
+      "id": "89c37140-8714-441c-bedd-24748bc7b1bf",
+      "name": "Uazapi - Send Text"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Mrg - Input Data').item.json.extra.installationUrl }}/api/v1/accounts/{{ $('Mrg - Input Data').item.json.extra.accountId }}/conversations/{{ $('Mrg - Input Data').item.json.extra.conversationId }}/messages/{{ $('Mrg - Input Data').item.json.extra.messageId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"delivered\"}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3456,
+        848
+      ],
+      "id": "e8dce8c4-64c0-4fbd-bc3c-084bc0c65dbd",
+      "name": "Message status - Delivered",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=MID:{{ $('Mrg - Message Data').item.json.messageid }}:TYPE",
+        "value": "=text",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        848
+      ],
+      "id": "7e3a76b0-6a84-4476-b606-e3372425d7b7",
+      "name": "Cache MESSAGE type key",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=MID:{{ $('Uazapi - Send Text').isExecuted ? $('Uazapi - Send Text').item.json.messageid : $('Uazapi - Send Media').item.json.messageid }}",
+        "value": "={\"id\":{{ $('Mrg - Input Data').item.json.extra.messageId }},\"status\":\"delivered\",\"cvsId\":{{ $('Mrg - Input Data').item.json.extra.conversationId }}}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3632,
+        848
+      ],
+      "id": "9ea17b1c-afda-41b4-9fc7-c88e8b2674bc",
+      "name": "Cache message (As Delivered!)",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2528,
+        1136
+      ],
+      "id": "46e1db43-b27c-4439-846a-a45b77d0c5c9",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "message.attachments.content",
+        "options": {
+          "destinationFieldName": "attachment"
+        }
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        1136
+      ],
+      "id": "20000b1a-aaa3-4ca9-9e37-b7ec91c3c21d",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2b089170-dfc1-48a4-919d-1af997c2c7a0",
+              "leftValue": "={{ $('Redis - Queue Processor').item.json.toSend }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        864
+      ],
+      "id": "57e23faa-3506-4535-8684-e5a99f9268f9",
+      "name": "Has Items?"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "Queue finished!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        1088
+      ],
+      "id": "94b4febc-b5c1-4f6a-8a26-e40f428287ad",
+      "name": "Execution Data"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('When Executed by Another Workflow').first().json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4784,
+        864
+      ],
+      "id": "790fa329-b3f1-4f44-b447-ef9142f188e6",
+      "name": "InputKeys"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        848
+      ],
+      "id": "7a10fa84-e5b5-4432-a1b1-04e641712820",
+      "name": "Mrg - Input Data",
+      "notes": "Pode ter o payload do Lpop ou... quando é typing, do próprio trigger!"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/message/presence",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Nml - Inbox Event').item.json.message.chatId }}\",\n  \"presence\": \"{{ $('Nml - Inbox Event').item.json.event == \"conversation_typing_on\" ? \"composing\" : \"paused\" }}\"\n  {{\n    ($('Nml - Inbox Event').item.json.event == \"conversation_typing_on\"\n      ? `,\"delay\": 4000`\n      : ''\n    )\n  }}\n}",
+        "options": {
+          "timeout": 2000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        96
+      ],
+      "id": "f498ae62-cc2b-457f-b07a-f61ee01a4d38",
+      "name": "Uazapi - Composing controller",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "={{ $('When Executed by Another Workflow').item.json.check.body.event }} ({{ $json.toSend.body.conversation.meta.sender.identifier.split('@')[0] }})"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        480
+      ],
+      "id": "4c6481cc-4f4e-4563-b08f-4a50b9f24e56",
+      "name": "Typing Event"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        1312
+      ],
+      "id": "9fedfbdb-4de3-4a40-90eb-d58864d025c4",
+      "name": "Wait 2s",
+      "webhookId": "f7428125-0bf2-4bd0-97db-2c90a1f50cb3"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Checar..."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        1184
+      ],
+      "id": "caf55193-6ab4-4f56-be3b-3327d8604d9f",
+      "name": "Media unavaliable"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "87905f15-a777-4e17-bebe-1a2b13533eea",
+              "leftValue": "={{ $json.error.message }}",
+              "rightValue": "timeout of 2000ms exceeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2864,
+        176
+      ],
+      "id": "2fb77c88-0e68-455a-95c2-5c23b6722481",
+      "name": "Erro programado (release flow timeout)?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Checar!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        240
+      ],
+      "id": "f60e9bb4-9f44-4566-af84-a5f390f4f4e3",
+      "name": "Unknow Error"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "={{ $('Redis - Queue Processor').first().json.lpopResult }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        4976,
+        864
+      ],
+      "id": "9cf2bb5d-ea5c-4e30-9d4f-298e93e2e160",
+      "name": "Execution Data1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6c042438-74f7-460e-b896-725b911e3277",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor.eventType }}",
+                    "rightValue": "SYSTEM_COMMAND",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "command_event"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ [\"conversation_typing_on\", \"conversation_typing_off\"].includes($('When Executed by Another Workflow').item.json.check?.body.event) }}",
+                    "rightValue": "typing_event",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "d5eb1a49-c55e-4eea-bb21-0f7df5cfa292"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "typing_event"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ae5ae1e2-1a47-4fb4-a089-f0ba534c6df1",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor.eventType }}",
+                    "rightValue": "DELETED_MESSAGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "deletion_event"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "55c3a9cd-efac-48ad-8275-72891e19eb20",
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "message_event"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1168,
+        784
+      ],
+      "id": "a998e44b-3622-471f-8fc2-4d54c9735d53",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Check instance configs: Without Instance Token!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        848,
+        624
+      ],
+      "id": "6c06ef78-6212-4a99-95bc-2119e87793c7",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO message_map (stanza_id, cw_message_id, installation, cw_account_id, cw_inbox_id, cw_conversation_id, id_with_owner)\nVALUES (\n  'MID:{{ $('Mrg - Message Data').item.json.messageid }}',\n    {{ $('Mrg - Input Data').item.json.extra.messageId }},\n    '{{ $('Mrg - Input Data').item.json.extra.installationUrl }}',\n    {{ $('Mrg - Input Data').item.json.extra.accountId }},\n    {{ $('Mrg - Input Data').item.json.extra.contac_inbox.inbox_id }},\n    {{ $('Mrg - Input Data').item.json.extra.conversationId }},\n    '{{ $('Mrg - Message Data').item.json.id }}'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4592,
+        864
+      ],
+      "id": "8f61d78c-ef0b-443a-b0d9-8a5a9409978e",
+      "name": "Map Message Ids",
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        32
+      ],
+      "id": "272d2d13-025a-4488-b142-637cdafb9470",
+      "name": "Bug temporário"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5f37421d-b3cf-40b7-a1ae-bd482706914a",
+              "leftValue": "={{ $('Nml - Inbox Event').item.json.event }}",
+              "rightValue": "conversation_typing_off",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        192
+      ],
+      "id": "52ee1982-59f5-4020-a211-289506ec1c16",
+      "name": "Paused?"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "={{ $('Nml - Inbox Event').item.json.event }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        3072,
+        80
+      ],
+      "id": "3e7742f4-41c1-4ed2-aeb5-333fa25adb60",
+      "name": "Sucess!"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5168,
+        1472
+      ],
+      "id": "b75c43ca-abc4-45ae-b14a-a975f648e0b2",
+      "name": "Organizer Return Loop"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=context:exec:{{ $executionId }}",
+        "value": "={{ JSON.stringify({\n\"instanceToken\": $('Get Inbox Token').item.json.data || $('Nml - Instance Token to Cache').item.json.data\n}) }}",
+        "expire": true,
+        "ttl": 3600
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        848,
+        992
+      ],
+      "id": "90dd4cba-92e6-4723-b05d-12c594d5b845",
+      "name": "push Token On Context Key (1h)",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createClient } = require('redis');\n\nconst executionId = $execution.id;\nconst processingQueueKey = `processing:exec:${executionId}`;\n\nconst client = createClient({\n  socket: { host: 'redis', port: 6379 },\n  database: 10\n});\n\ntry {\n  await client.connect();\n  await client.del([processingQueueKey, contextKey]);\n} catch (error) {\n  // Apenas registre o erro.\n} finally {\n  if (client.isOpen) {\n    await client.quit();\n  }\n}\n\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5168,
+        864
+      ],
+      "id": "da1d0317-33f3-4736-b4eb-9fdfaacff3bb",
+      "name": "Delete Message Keys"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f3c36c4b-cd7d-42e8-a6f4-38eca7944ded",
+              "leftValue": "={{ $('Redis - Queue Processor').item.json.attempt }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3824,
+        848
+      ],
+      "id": "539be22f-62fd-4e9a-99e9-3af5dea2982b",
+      "name": "Attempts?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM message_map\nWHERE cw_message_id = {{ $('Mrg - Input Data').item.json.extra.messageId }}\n  AND installation = '{{ $('Mrg - Input Data').item.json.extra.installationUrl }}'\n  AND cw_account_id = {{ $('Mrg - Input Data').item.json.extra.accountId }}\n  AND cw_inbox_id = {{ $('Mrg - Input Data').item.json.extra.contac_inbox.inbox_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4016,
+        720
+      ],
+      "id": "8f517737-b960-4721-b262-d499d1edcf78",
+      "name": "Delete Maped ID",
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        848
+      ],
+      "id": "1e1283da-ec0f-40df-9c5d-e560bfd668a5",
+      "name": "Mrg - Message Data"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "AgYEqGT5xheukni2",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AgYEqGT5xheukni2",
+          "cachedResultName": "3.0 Whatpro Error Handler | (Logs > Whatpro)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4384,
+        720
+      ],
+      "id": "14177a75-7335-498b-ae07-d23b7ab63e19",
+      "name": "Execute Workflow1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dfb08b08-8cd7-4b51-81fc-7e11cbd786ce",
+              "name": "executionId",
+              "value": "={{ $execution.id }}",
+              "type": "number"
+            },
+            {
+              "id": "1f1a8f53-9d56-4818-96be-9b7349e30cfc",
+              "name": "chatId",
+              "value": "={{ $('Nml - Inbox Event').item.json.message.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "78863204-9cd0-4ffa-8788-f132fb6a7a25",
+              "name": "stanzaId",
+              "value": "={{ $('Mrg - Message Data').item.json.messageid }}",
+              "type": "string"
+            },
+            {
+              "id": "46d9373d-c1bb-4493-b31c-ad0ec01be34f",
+              "name": "attempt",
+              "value": "={{ $('Redis - Queue Processor').item.json.attempt }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4192,
+        720
+      ],
+      "id": "0d87726f-ef3b-497e-9d5f-827d9ac0ff7a",
+      "name": "inputValues"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=Message Deleted"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        656
+      ],
+      "id": "b0cf405a-c0c6-40b0-a493-6c9f733486d5",
+      "name": "Deletion Event"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE message_map\nSET deleted = true\nWHERE cw_message_id = {{ $('Mrg - Input Data').item.json.extra.messageId }}\n  AND installation = '{{ $('Mrg - Input Data').item.json.extra.installationUrl }}'\n  AND cw_account_id = {{ $('Mrg - Input Data').item.json.extra.accountId }}\n  AND cw_inbox_id = {{ $('Nml - Instance Chatwoot Cached Data').item.json.inboxId }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2576,
+        432
+      ],
+      "id": "a88de636-8c64-45e6-80a3-92ae2b49e072",
+      "name": "Delete Maped ID1",
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=Command Event"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        272
+      ],
+      "id": "8c1a2df7-dc93-449a-8fa6-12a2ec08058a",
+      "name": "Command Event"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor.command }}",
+                    "rightValue": "limpar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "22c64cdc-32e4-4d80-a842-df50c85a7f4b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Limpar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "db19d8a1-ea35-46a8-855f-390e73169ceb",
+                    "leftValue": "",
+                    "rightValue": "comando2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "comando2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2256,
+        1984
+      ],
+      "id": "162015bd-5b92-45af-9932-2dbeaaab8e8c",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createClient } = require('redis');\nconst queueKey = $('When Executed by Another Workflow').first().json.queueKey;\nconst lockKey = $('When Executed by Another Workflow').first().json.lockKey;\nconst client = createClient({\n  socket: { host: 'redis', port: 6379 },\n  database: 10\n});\n\nlet queueValue = null;\nlet queueLength = 0;\nlet lockValue = null;\nlet deletedCount = 0;\n\ntry {\n  await client.connect();\n  \n  // Captura valor do lock (string)\n  lockValue = await client.get(lockKey);\n  \n  // Captura valor da queue (lista) - pega toda a lista\n  queueValue = await client.lRange(queueKey, 0, -1);\n  \n  // Conta quantos itens tinha na fila\n  queueLength = await client.lLen(queueKey);\n  \n  // Apaga as chaves\n  deletedCount = await client.del([queueKey, lockKey]);\n  \n} catch (error) {\n  throw new Error(`Falha na operação Redis: ${error.message}`);\n} finally {\n  try {\n    if (client && client.isOpen) {\n      await client.quit();\n    }\n  } catch (closeError) {\n    console.error('Erro ao fechar conexão Redis:', closeError.message);\n  }\n}\n\nreturn {\n  queueKey: queueKey,\n  queueValue: queueValue,\n  queueLength: queueLength,  // ← Quantidade de itens na fila\n  lockKey: lockKey, \n  lockValue: lockValue,\n  deletedCount: deletedCount\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2576,
+        1968
+      ],
+      "id": "f002b176-ced1-4d2b-a2be-7726a6094fe6",
+      "name": "Delete Message Keys1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "rCFY701JXyZ5wlB1",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/rCFY701JXyZ5wlB1",
+          "cachedResultName": "1.2 API receptor - MAIN | (Uazapi/DB/Redis > Whatpro)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3200,
+        1968
+      ],
+      "id": "941d4fdf-1d00-4cd5-9717-e1f91202b1ca",
+      "name": "\"MAIN Uazapi receptor\" Create Sys Message1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5ae48456-86f1-4013-b4bb-498d9cbe7898",
+              "name": "chatId",
+              "value": "={{ $('Nml - Inbox Event').item.json.message.chatId }}",
+              "type": "string"
+            },
+            {
+              "id": "8106b7f1-9201-4245-b954-ce7a5e07761a",
+              "name": "text",
+              "value": "=🗑️✅ Fila do contato limpa com sucesso!",
+              "type": "string"
+            },
+            {
+              "id": "a37243cc-c4b4-426c-97a1-896b465883eb",
+              "name": "instanceToken",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2816,
+        1968
+      ],
+      "id": "2a5e52de-b6a2-4668-92ef-4f33a44a833c",
+      "name": "Data System Message (Chat Info)"
+    },
+    {
+      "parameters": {
+        "jsCode": "//var systemMessageType = $('Data System Message (Chat Info)').item.json.systemMessageType;\nvar text = $('Data System Message (Chat Info)').item.json.text;\nvar chatId = $('Data System Message (Chat Info)').item.json.chatId;\nvar instanceToken = $('Data System Message (Chat Info)').item.json.instanceToken;\n\nvar data = {\n  body: {\n    \"EventType\": \"messages\",\n    \"message\": {\n      \"chatid\": chatId,\n      \"content\": {\n        \"text\": \"**SYSTEM:** ...\",\n      },\n      \"fromMe\": true,\n      \"isGroup\": false,\n      \"messageid\": \"\",\n      \"senderName\": \"\",\n      \"source\": \"yib_sys\",\n      \"text\": `**SYSTEM:** ${text}`,\n      \"type\": \"text\",\n      \"wasSentByApi\": false\n    },\n    \"token\": instanceToken\n  },\n  \"executionMode\": \"production\",\n  \"switchProcessor\": {\n    \"eventType\": \"SYSTEM_MESSAGE_ERROR\",\n    \"discordReason\": \"\"\n  }\n}\nreturn [{\n  json: data\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        1968
+      ],
+      "id": "faece963-1c2f-480a-bf72-138959e2c0dd",
+      "name": "Data System Message (Chat Info)1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/message/delete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{ $('Execute a SQL query').item.json.id_with_owner }}\"\n}",
+        "options": {
+          "timeout": 2000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        432
+      ],
+      "id": "291a8abe-feb0-4b27-8378-0a644f2708e4",
+      "name": "Uazapi - Delete message",
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/message/react",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Nml - Inbox Event').item.json.message.chatId }}\",\n  \"text\": {{ $('Nml - Inbox Event').item.json.message.content.toJsonString() }},\n  \"readchat\": true\n  {{\n      $('Nml - Inbox Event').item.json.message.inReplyTo.isReply && \n        $('Execute a SQL query').item.json.stanza_id ? \n      ',\"id\": \"' + $('Execute a SQL query').item.json.stanza_id.replace('MID:','') + '\"' : ''\n  }}\n}\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        640
+      ],
+      "id": "28cf4ac2-e1c8-47bf-baca-b65a018675cc",
+      "name": "Uazapi - Send Reaction"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "32a6463b-e541-48fc-be79-d5a2eed8279a",
+              "leftValue": "={{ $('Nml - Inbox Event').item.json.message.inReplyTo.isReply }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "df7449c1-7e98-4079-bcee-f53456d9553c",
+              "leftValue": "={{ $('When Executed by Another Workflow').item.json.switchProcessor.eventType }}",
+              "rightValue": "DELETED_MESSAGE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        880
+      ],
+      "id": "56c0ffd2-8235-4ca8-b833-4adc42828acf",
+      "name": "Quoted OR Deleted?2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM message_map\nWHERE cw_message_id = {{ $('Nml - Inbox Event').item.json.message.inReplyTo.messageId || $('When Executed by Another Workflow').item.json.extra.messageId }}\nAND cw_account_id = {{ $('Nml - Instance Chatwoot Cached Data').item.json.accountId }}\nAND cw_inbox_id = {{ $('Nml - Instance Chatwoot Cached Data').item.json.inboxId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        784
+      ],
+      "id": "dd63f7f0-0d58-4fe6-ad57-13e22e9b322f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('Nml - Inbox Event').item.json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1904,
+        896
+      ],
+      "id": "44764611-f38f-4dd8-b083-5c6abd1ff0ca",
+      "name": "Imediate Input - Inbox Event"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Nml - Inbox Event').item.json.message.chatId }}\",\n  {{\n    $('Nml - Inbox Event').item.json.message.content\n      ? `\"text\": \"${$('Nml - Inbox Event').item.json.message.content}\",`\n      : ''\n  }}\n  \"type\": \"{{ \n  (() => {\n    const type = $('Split Out').item.json.attachment.type;\n    const typeMap = {\n      \"file\": \"document\",\n      \"audio\": \"ptt\"\n    };\n    return typeMap[type] || type;\n  })() \n}}\",\n  \"file\": \"{{ $('Split Out').item.json.attachment.url }}\"{{\n    $('Split Out').item.json.attachment.type === 'file' ? \n    ',\"docName\": \"' + ($('Split Out').item.json.attachment.fileName || 'File') + '\"' : ''\n  }},\n  \"readchat\": true\n  {{\n      $('Nml - Inbox Event').item.json.message.inReplyTo.isReply && \n        $('Execute a SQL query').item.json.stanza_id ? \n      ',\"replyid\": \"' + $('Execute a SQL query').item.json.stanza_id.replace('MID:','') + '\"' : ''\n  }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2720,
+        1232
+      ],
+      "id": "356f6950-10a6-4326-a5fb-7bf6a505f630",
+      "name": "Uazapi - Send Media",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// input fictício para n8n, não precisa copiar esta linha no seu nó\ninput = $('Mrg - Input Data').first().json;\n// --- Lógica de Variáveis ---\nconst replyToId = input.toSend.body.content_attributes?.in_reply_to;\n// Acessa o array de anexos de forma segura\nconst sourceAttachments = input.toSend.body.attachments;\n// Calcula a quantidade de anexos. Usa o `?? 0` para garantir que seja um número (0 se não houver anexos).\nconst attachmentsCount = sourceAttachments?.length ?? 0;\n// --- Objeto de Retorno ---\nreturn {\n  event: input.check.body.event,\n  isPrivate: input.check.body.private,\n  agentName: input.toSend.body.conversation.messages[0].sender.available_name,\n  message: {\n    chatId: input.toSend.body.conversation.meta.sender.identifier,\n    content: input.toSend.body.content,\n    inReplyTo: {\n      isReply: !!replyToId,\n      ...(replyToId && { messageId: replyToId }),\n    },\n    // --- Lógica de Anexos Atualizada ---\n    attachments: {\n      attachmentsCount: attachmentsCount,\n      // Adiciona a propriedade 'content' apenas se a contagem for maior que 0\n      ...(attachmentsCount > 0 && {\n        content: sourceAttachments.map(att => {\n          const baseAttachment = {\n            id: att.id,\n            type: att.file_type,\n            url: att.data_url\n          };\n          \n          // Adiciona fileName se o file_type for \"file\"\n          if (att.file_type === 'file') {\n            // Extrai o nome do arquivo da URL (última parte após a /)\n            const urlParts = att.data_url.split('/');\n            const encodedFileName = urlParts[urlParts.length - 1];\n            // Decodifica o nome do arquivo\n            baseAttachment.fileName = decodeURIComponent(encodedFileName);\n          }\n          \n          return baseAttachment;\n        })\n      })\n    },\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        880
+      ],
+      "id": "b5bcc071-1489-43b7-a191-dfb5f5e5e845",
+      "name": "Nml - Inbox Event"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createClient } = require('redis');\n\nvar data = $input.item.json;\nvar queueKey = data.queueKey;\nconst executionId = $execution.id;\nconst processingQueueKey = `processing:exec:${executionId}`;\n\nconst client = createClient({\n  socket: {\n    host: 'redis',\n    port: 6379\n  },\n  database: 10\n});\n\nlet movedPayloadString = null;\n\ntry {\n  await client.connect();\n  //const poppedPayloadString = await client.lPop(queueKey); // Puxa o primeiro item (payload) da fila. ← DEPRECATED!\n\n  movedPayloadString = await client.lMove(queueKey, processingQueueKey, 'LEFT', 'RIGHT'); // Move a mensagem mais antiga da fila principal para a fila de trabalho única ← LATEST!\n  \n  if (movedPayloadString) { // Se um payload foi retornado (movido), processa-o\n    await client.expire(processingQueueKey, 3600); //1h Apenas para limpeza. Worktable efêmero.\n    const remainingCount = await client.lLen(queueKey); // Obtém a quantidade de itens restantes na fila (APÓS remoção do atual!) para debug.\n\n    movedPayloadString = JSON.parse(movedPayloadString); //Parseia o payload retornado.\n    $input.item.json = { ...data, ...movedPayloadString }; // Somar este payload à queueKey & lockKey do input.\n    $input.item.json.lpopResult = `Fila [${queueKey}] agora tem ${remainingCount} itens`; // Debug para execution data (só faz sentido em auto trigger, não em loop... ou, faz em caso de falha)\n  } else {\n    // Se não há mais mensagens para processar, zeramos a fila, precisamos remover o lock. Vou fazer logo aqui em código pra não usar outro node Redis.\n    await client.del(data.lockKey);\n    $input.item.json.lpopResult = `Fila [${queueKey}] esvaziada. Lock removido!`;\n  }\n  \n} catch (error) {\n  throw error;\n} finally {\n  if (client.isOpen) {\n    await client.quit();\n  }\n}\n  \nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        864
+      ],
+      "id": "9ad176b1-af23-4500-b21b-1438003183f4",
+      "name": "Redis - Queue Processor",
+      "notes": "O fato de eu concatenar a entrada com a saída pode gerar loop se eu enviar o payload inteiro como input. Porque mesmo que o lmove não retorne nada, eu vou concatenar isso com o payload inteiro, então se for uma mensagem, vai enviá-la em loop."
+    },
+    {
+      "parameters": {
+        "content": "# ⚠️👉🏼 Substituir credenciais conforme tutorial",
+        "height": 96,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "d6157ff0-7691-4846-a1e7-3201e9518df3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# ⚠️👉🏼 Substituir credenciais conforme tutorial",
+        "height": 96,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3856,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "c9deb0d4-5f88-452c-95b0-ea5f1775a734",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 👇🏼 SELECIONE\n## 👉🏼 Flow 3 👈🏼",
+        "height": 272,
+        "width": 208,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4336,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "9a7307a4-6e32-4af2-91b6-4785e916d446",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 👇🏼 SELECIONE\n## 👉🏼 Flow 1.2 👈🏼",
+        "height": 272,
+        "width": 208,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3136,
+        1872
+      ],
+      "typeVersion": 1,
+      "id": "0a19c6f2-c1cc-408a-959d-a9f37cc70a61",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2368,
+        1424
+      ],
+      "id": "6e7c5cbd-3fe7-4f4d-b872-031c5b4e15cd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dcba89a3-893b-46e6-b5d4-d3a53b1cafc3",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 8,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2928,
+        1248
+      ],
+      "id": "1436eb80-a01e-4ea7-9b84-dc5be2358e34",
+      "name": "Mídia não disponível ainda (8x)?"
+    },
+    {
+      "parameters": {
+        "content": "## Usei .first() que ultimos compartilhamentos não tinha!"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4896,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "3ed9e9e7-9492-401c-b16d-05b2ebbb20ea",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Paused?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Delete message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Send Reaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Send Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instance Chatwoot Data": {
+      "main": [
+        [
+          {
+            "node": "Nml - Instance Chatwoot Cached Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Instance Chatwoot Cached Data": {
+      "main": [
+        [
+          {
+            "node": "push Token On Context Key (1h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Inbox Token": {
+      "main": [
+        [
+          {
+            "node": "No data?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No data?1": {
+      "main": [
+        [
+          {
+            "node": "Filter By Inbox ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Instance Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Keys": {
+      "main": [
+        [
+          {
+            "node": "Get Inbox Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter By Inbox ID": {
+      "main": [
+        [
+          {
+            "node": "Filter By Account Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter By Account Id": {
+      "main": [
+        [
+          {
+            "node": "No data?2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Inbox Token (30D)": {
+      "main": [
+        [
+          {
+            "node": "Get Instance Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No data?2": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nml - Instance Token to Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Instance Token to Cache": {
+      "main": [
+        [
+          {
+            "node": "Cache Inbox Token (30D)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Send Text": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message status - Delivered": {
+      "main": [
+        [
+          {
+            "node": "Cache message (As Delivered!)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache MESSAGE type key": {
+      "main": [
+        [
+          {
+            "node": "Message status - Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache message (As Delivered!)": {
+      "main": [
+        [
+          {
+            "node": "Attempts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Send Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Items?": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execution Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InputKeys": {
+      "main": [
+        [
+          {
+            "node": "Execution Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mrg - Input Data": {
+      "main": [
+        [
+          {
+            "node": "Redis Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Composing controller": {
+      "main": [
+        [
+          {
+            "node": "Sucess!",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro programado (release flow timeout)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Typing Event": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s": {
+      "main": [
+        [
+          {
+            "node": "Uazapi - Send Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro programado (release flow timeout)?": {
+      "main": [
+        [
+          {
+            "node": "Sucess!",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknow Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Data1": {
+      "main": [
+        [
+          {
+            "node": "Delete Message Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Command Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Typing Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Deletion Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis - Queue Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Message Ids": {
+      "main": [
+        [
+          {
+            "node": "InputKeys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paused?": {
+      "main": [
+        [
+          {
+            "node": "Bug temporário",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Composing controller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizer Return Loop": {
+      "main": [
+        [
+          {
+            "node": "Redis - Queue Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push Token On Context Key (1h)": {
+      "main": [
+        [
+          {
+            "node": "Nml - Inbox Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Message Keys": {
+      "main": [
+        [
+          {
+            "node": "Organizer Return Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attempts?": {
+      "main": [
+        [
+          {
+            "node": "Delete Maped ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Message Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Maped ID": {
+      "main": [
+        [
+          {
+            "node": "inputValues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mrg - Message Data": {
+      "main": [
+        [
+          {
+            "node": "Cache MESSAGE type key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow1": {
+      "main": [
+        [
+          {
+            "node": "Map Message Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "inputValues": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deletion Event": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Event": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Delete Message Keys1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Message Keys1": {
+      "main": [
+        [
+          {
+            "node": "Data System Message (Chat Info)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data System Message (Chat Info)": {
+      "main": [
+        [
+          {
+            "node": "Data System Message (Chat Info)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data System Message (Chat Info)1": {
+      "main": [
+        [
+          {
+            "node": "\"MAIN Uazapi receptor\" Create Sys Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Delete message": {
+      "main": [
+        [
+          {
+            "node": "Delete Maped ID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Send Reaction": {
+      "main": [
+        [
+          {
+            "node": "InputKeys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quoted OR Deleted?2": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Imediate Input - Inbox Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Imediate Input - Inbox Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imediate Input - Inbox Event": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Send Media": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mídia não disponível ainda (8x)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Inbox Event": {
+      "main": [
+        [
+          {
+            "node": "Quoted OR Deleted?2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis - Queue Processor": {
+      "main": [
+        [
+          {
+            "node": "Has Items?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mídia não disponível ainda (8x)?": {
+      "main": [
+        [
+          {
+            "node": "Media unavaliable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "AgYEqGT5xheukni2",
+    "timezone": "America/Sao_Paulo"
+  },
+  "versionId": "24b527fd-11b8-4050-9872-059d64d56eda",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e23f3221c9c13f410dedd6480997c7f1b273c096ebf708d184a8b0c24cf67206"
+  },
+  "id": "FY9B7gsx4MF1Vm41",
+  "tags": [
+    {
+      "createdAt": "2025-02-06T10:11:38.193Z",
+      "updatedAt": "2025-02-06T10:11:38.193Z",
+      "id": "giucuooCzPVyIkng",
+      "name": "Whatpro"
+    },
+    {
+      "createdAt": "2025-10-17T11:42:11.665Z",
+      "updatedAt": "2025-10-17T11:42:11.665Z",
+      "id": "M533Cwcccnhc2pS9",
+      "name": "Uazapi"
+    }
+  ]
+}
