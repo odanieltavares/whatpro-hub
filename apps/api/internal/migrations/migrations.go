@@ -52,6 +52,14 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("auto-migrate failed: %w", err)
 	}
 
+	// Register new migrations
+	if err := MigrateAuth(db); err != nil {
+		return fmt.Errorf("failed to migrate auth tables: %w", err)
+	}
+	if err := MigrateEntitlements(db); err != nil {
+		return fmt.Errorf("failed to migrate entitlements tables: %w", err)
+	}
+
 	// Create indexes
 	if err := createIndexes(db); err != nil {
 		return fmt.Errorf("failed to create indexes: %w", err)

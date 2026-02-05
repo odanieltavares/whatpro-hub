@@ -202,7 +202,7 @@ func main() {
 	accounts.Post("/sync", middleware.RequireRole("super_admin"), h.SyncAccounts)
 
 	// Teams
-	teams := protected.Group("/accounts/:accountId/teams")
+	teams := protected.Group("/accounts/:accountId/teams", middleware.RequireAccountAccess())
 	teams.Get("/", h.ListTeams)
 	teams.Get("/:id", h.GetTeam)
 	teams.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateTeam)
@@ -215,7 +215,7 @@ func main() {
 	teams.Delete("/:id/members/:userId", middleware.RequireRole("admin", "super_admin"), h.RemoveTeamMember)
 
 	// Users/Agents
-	users := protected.Group("/accounts/:accountId/users")
+	users := protected.Group("/accounts/:accountId/users", middleware.RequireAccountAccess())
 	users.Get("/", h.ListUsers)
 	users.Get("/:id", h.GetUser)
 	users.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateUser)
@@ -223,7 +223,7 @@ func main() {
 	users.Delete("/:id", middleware.RequireRole("admin", "super_admin"), h.DeleteUser)
 
 	// Providers
-	providers := protected.Group("/accounts/:accountId/providers")
+	providers := protected.Group("/accounts/:accountId/providers", middleware.RequireAccountAccess())
 	providers.Get("/", h.ListProviders)
 	providers.Get("/:id", h.GetProvider)
 	providers.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateProvider)
@@ -232,7 +232,7 @@ func main() {
 	providers.Get("/:id/health", h.CheckProviderHealth)
 
 	// Kanban - Boards
-	boards := protected.Group("/accounts/:accountId/boards")
+	boards := protected.Group("/accounts/:accountId/boards", middleware.RequireAccountAccess())
 	boards.Get("/", h.ListBoards)
 	boards.Get("/:id", h.GetBoard)
 	boards.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateBoard)

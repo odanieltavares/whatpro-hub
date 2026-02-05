@@ -127,6 +127,11 @@ func (h *Handler) CreateProvider(c *fiber.Ctx) error {
 		return err
 	}
 
+	// CHECK ENTITLEMENTS (Quota)
+	if err := h.EntitlementsService.CanCreateResource(accountID, "provider"); err != nil {
+		return h.Error(c, fiber.StatusForbidden, err.Error())
+	}
+
 	// Validate provider type
 	validTypes := map[string]bool{
 		"evolution":  true,

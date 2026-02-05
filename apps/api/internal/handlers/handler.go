@@ -20,17 +20,19 @@ import (
 type Handler struct {
 	DB              *gorm.DB
 	Redis           *redis.Client
-	Config          *config.Config
-	AccountService  *services.AccountService
-	ProviderService *services.ProviderService
-	TeamService     *services.TeamService
-	UserService     *services.UserService
-	AuditService    *services.AuditService
-	KanbanService   *services.KanbanService
-	GatewayService  *services.GatewayService
-	BillingService  *services.BillingService
-	Validator       *validator.Validate
-	Logger          *log.Logger
+	Config              *config.Config
+	AccountService      *services.AccountService
+	ProviderService     *services.ProviderService
+	TeamService         *services.TeamService
+	UserService         *services.UserService
+	AuthService         *services.AuthService
+	EntitlementsService *services.EntitlementsService // Added EntitlementsService
+	AuditService        *services.AuditService
+	KanbanService       *services.KanbanService
+	GatewayService      *services.GatewayService
+	BillingService      *services.BillingService
+	Validator           *validator.Validate
+	Logger              *log.Logger
 }
 
 // NewHandler creates a new Handler with dependencies
@@ -44,12 +46,15 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 	kanbanRepo := repositories.NewKanbanRepository(db)
 	gatewayRepo := repositories.NewGatewayRepository(db)
 	billingRepo := repositories.NewBillingRepository(db)
+	sessionRepo := repositories.NewSessionRepository(db)
 
 	// Initialize services
 	accountService := services.NewAccountService(accountRepo, cfg.ChatwootURL, cfg.ChatwootAPIKey)
 	auditService := services.NewAuditService(auditRepo)
 	teamService := services.NewTeamService(teamRepo)
 	userService := services.NewUserService(userRepo)
+	authService := services.NewAuthService(sessionRepo, userRepo)
+	entitlementsService := services.NewEntitlementsService(db) // Initialize EntitlementsService
 	kanbanService := services.NewKanbanService(kanbanRepo)
 	gatewayService := services.NewGatewayService(gatewayRepo, nil, accountRepo) // TODO: Add ProviderRepo
 	billingService := services.NewBillingService(billingRepo, userRepo, "ASAAS_API_KEY")
@@ -63,19 +68,21 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 	}
 
 	return &Handler{
-		DB:              db,
-		Redis:           rdb,
-		Config:          cfg,
-		AccountService:  accountService,
-		ProviderService: providerService,
-		TeamService:     teamService,
-		UserService:     userService,
-		AuditService:    auditService,
-		KanbanService:   kanbanService,
-		GatewayService:  gatewayService,
-		BillingService:  billingService,
-		Validator:       middleware.GetValidator(),
-		Logger:          log.Default(),
+		DB:                  db,
+		Redis:               rdb,
+		Config:              cfg,
+		AccountService:      accountService,
+		ProviderService:     providerService,
+		TeamService:         teamService,
+		UserService:         userService,
+		AuthService:         authService,
+		EntitlementsService: entitlementsService, // Injected EntitlementsService
+		AuditService:        auditService,
+		KanbanService:       kanbanService,
+		GatewayService:      gatewayService,
+		BillingService:      billingService,
+		Validator:           middleware.GetValidator(),
+		Logger:              log.Default(),
 	}
 }
 

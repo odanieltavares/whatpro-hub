@@ -5,7 +5,51 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
+
+// APIKey allows server-to-server auth
+type APIKey struct {
+	ID        uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	AccountID int        `gorm:"index;not null"`
+	Name      string     `gorm:"size:100;not null"`
+	Prefix    string     `gorm:"size:10;index;unique;not null"`
+	KeyHash   string     `gorm:"text;not null"`
+	Scopes    string     `gorm:"type:text"`
+	LastUsedAt *time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+	CreatedAt  time.Time
+}
+
+// AccountEntitlements defines limits for an account
+type AccountEntitlements struct {
+	AccountID            int       `gorm:"primaryKey;autoIncrement:false" json:"account_id"`
+	MaxInboxes           int       `gorm:"default:2" json:"max_inboxes"`
+	MaxAgents            int       `gorm:"default:5" json:"max_agents"`
+	MaxTeams             int       `gorm:"default:2" json:"max_teams"`
+	MaxIntegrations      int       `gorm:"default:1" json:"max_integrations"`
+	MaxMonthlyMessages   int       `gorm:"default:1000" json:"max_monthly_messages"`
+	KanbanEnabled        bool      `gorm:"default:true" json:"kanban_enabled"`
+	AnalyticsEnabled     bool      `gorm:"default:false" json:"analytics_enabled"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+// UsageDaily tracks daily usage metrics
+type UsageDaily struct {
+	ID                    uint      `gorm:"primaryKey" json:"id"`
+	AccountID             int       `gorm:"index;not null" json:"account_id"`
+	Date                  time.Time `gorm:"index;not null;type:date" json:"date"`
+	ActiveUsers           int       `gorm:"default:0" json:"active_users"`
+	MessagesSent          int       `gorm:"default:0" json:"messages_sent"`
+	MessagesReceived      int       `gorm:"default:0" json:"messages_received"`
+	ConversationsOpened   int       `gorm:"default:0" json:"conversations_opened"`
+	ConversationsResolved int       `gorm:"default:0" json:"conversations_resolved"`
+	APIRequests           int       `gorm:"default:0" json:"api_requests"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
+}
 
 // Account represents a Chatwoot account (synced)
 type Account struct {
@@ -163,17 +207,6 @@ type CardHistory struct {
 	ToStageID   *uuid.UUID `gorm:"type:uuid" json:"to_stage_id,omitempty"`
 	Metadata    JSON       `gorm:"type:jsonb;default:'{}'" json:"metadata"`
 	CreatedAt   time.Time  `json:"created_at"`
-}
-
-// Session represents a JWT session
-type Session struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	UserID    uint      `gorm:"index" json:"user_id"`
-	TokenHash string    `gorm:"uniqueIndex" json:"-"`
-	IPAddress string    `json:"ip_address"`
-	UserAgent string    `json:"user_agent"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
 }
 
 // AuditLog represents an audit log entry

@@ -72,6 +72,11 @@ func (h *Handler) CreateTeam(c *fiber.Ctx) error {
 		return err
 	}
 
+	// CHECK ENTITLEMENTS (Quota)
+	if err := h.EntitlementsService.CanCreateResource(accountID, "team"); err != nil {
+		return h.Error(c, fiber.StatusForbidden, err.Error())
+	}
+
 	team := &models.Team{
 		AccountID:   accountID,
 		Name:        req.Name,

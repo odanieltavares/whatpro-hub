@@ -1,4 +1,5 @@
 # WhatPro Hub
+
 ## Product Requirements Document (PRD)
 
 ```
@@ -24,9 +25,9 @@
 
 ## Histórico de Revisões
 
-| Versão | Data | Autor | Descrição |
-|--------|------|-------|-----------|
-| 1.0.0 | 2026-01-31 | Equipe WhatPro | Versão inicial do PRD |
+| Versão | Data       | Autor          | Descrição             |
+| ------ | ---------- | -------------- | --------------------- |
+| 1.0.0  | 2026-01-31 | Equipe WhatPro | Versão inicial do PRD |
 
 ---
 
@@ -89,13 +90,13 @@ O **WhatPro Hub** é uma plataforma SaaS enterprise-grade que se integra nativam
 
 ## 1.3 Métricas de Sucesso
 
-| Métrica | Meta Inicial | Meta 12 Meses |
-|---------|--------------|---------------|
-| Uptime | 99.5% | 99.9% |
-| Latência P95 API | < 200ms | < 100ms |
-| Tempo de Onboarding | < 30 min | < 15 min |
-| NPS | > 40 | > 60 |
-| Churn Mensal | < 5% | < 3% |
+| Métrica             | Meta Inicial | Meta 12 Meses |
+| ------------------- | ------------ | ------------- |
+| Uptime              | 99.5%        | 99.9%         |
+| Latência P95 API    | < 200ms      | < 100ms       |
+| Tempo de Onboarding | < 30 min     | < 15 min      |
+| NPS                 | > 40         | > 60          |
+| Churn Mensal        | < 5%         | < 3%          |
 
 ---
 
@@ -108,6 +109,10 @@ O Chatwoot é uma plataforma open-source de atendimento ao cliente que ganhou tr
 ## 2.2 Problemas Identificados
 
 ```
+
+
+
+
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      PROBLEMAS A SEREM RESOLVIDOS                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
@@ -218,6 +223,7 @@ O WhatPro Hub resolve esses problemas através de uma arquitetura de extensão q
 ### 3.2.1 Hub Manager
 
 Módulo central de administração responsável por:
+
 - Gestão de contas/empresas (sincronizadas do Chatwoot)
 - Gestão de usuários e permissões
 - Configuração de providers (WhatsApp APIs)
@@ -226,6 +232,7 @@ Módulo central de administração responsável por:
 ### 3.2.2 Kanban
 
 Sistema visual de gestão que permite:
+
 - Visualização de conversas em formato de cards
 - Organização em estágios customizáveis (pipelines)
 - Gestão de leads e oportunidades
@@ -234,6 +241,7 @@ Sistema visual de gestão que permite:
 ### 3.2.3 Automações
 
 Engine de automação que oferece:
+
 - Triggers baseados em eventos do Chatwoot
 - Condições compostas (AND/OR)
 - Ações encadeadas
@@ -242,6 +250,7 @@ Engine de automação que oferece:
 ### 3.2.4 Analytics
 
 Dashboard de métricas incluindo:
+
 - Performance de agentes
 - Funil de conversão
 - Tempos de resposta
@@ -387,6 +396,7 @@ Necessidades do Sistema:
 ## 5.1 Estrutura de Requisitos
 
 Os requisitos seguem o formato:
+
 - **ID**: Identificador único (MOD-XXX)
 - **Prioridade**: P0 (Crítico), P1 (Alto), P2 (Médio), P3 (Baixo)
 - **Módulo**: Hub, Kanban, Auth, Analytics, Automation
@@ -397,47 +407,25 @@ Os requisitos seguem o formato:
 
 ## 5.2 Módulo: Autenticação e Autorização (AUTH)
 
-### AUTH-001: SSO com Chatwoot
+### AUTH-001: Autenticação Multi-Método
 
-```yaml
-ID: AUTH-001
-Prioridade: P0
-Módulo: Auth
-Título: Single Sign-On com Chatwoot
+**ID:** AUTH-001 | **Prioridade:** P0
 
-Descrição: |
-  O sistema deve autenticar usuários utilizando as credenciais 
-  existentes do Chatwoot, sem necessidade de login adicional.
+O sistema deve suportar três métodos distintos de autenticação para cobrir diferentes casos de uso:
 
-Fluxo Principal:
-  1. Usuário acessa WhatPro Hub via iframe no Chatwoot
-  2. Chatwoot envia token de autenticação via postMessage
-  3. WhatPro Hub valida token contra API do Chatwoot
-  4. Sistema cria/atualiza sessão local
-  5. Usuário acessa funcionalidades autorizadas
+1.  **Usuário (Humano):**
+    - **Fluxo:** Login via Email/Senha ou SSO Chatwoot.
+    - **Tokens:** JWT de acesso curto (~15min) + Refresh Token rotativo (em Cookie HTTPOnly).
+    - **Controle:** Tabela de sessões (`sessions`) rastreando Device, IP e User Agent para permitir revogação remota.
 
-Fluxo Alternativo - Token Inválido:
-  1. Validação falha
-  2. Sistema retorna erro 401
-  3. Exibe mensagem "Sessão expirada, recarregue a página"
+2.  **API Key (Máquina/Integração):**
+    - **Fluxo:** Header `X-API-Key: wp_live_<prefix>.<secret>`.
+    - **Segurança:** Apenas hash do segredo é armazenado no DB.
+    - **Controle:** Scopes granulares, rate limit separado e auditoria de uso.
 
-Critérios de Aceite:
-  - [ ] Token do Chatwoot é validado em < 500ms
-  - [ ] Sessão local é criada com JWT próprio
-  - [ ] Dados do usuário são sincronizados (nome, email, role)
-  - [ ] Logout no Chatwoot invalida sessão no WhatPro
-
-Dados Técnicos:
-  Token Chatwoot:
-    - access-token: string
-    - client: string  
-    - uid: string (email)
-    - token-type: "Bearer"
-  
-  Endpoint Validação:
-    GET {CHATWOOT_URL}/api/v1/profile
-    Headers: access-token, client, uid, token-type
-```
+3.  **Instance Token (Embed/Provider):**
+    - **Fluxo:** Token específico para iframes do Chatwoot ou webhooks de providers.
+    - **Escopo:** Privilégio mínimo necessário (ex: `webhooks:push`).
 
 ### AUTH-002: Sistema RBAC
 
@@ -460,7 +448,7 @@ Hierarquia de Roles:
       - Configuração de providers
       - Acesso a logs globais
       - Billing e licenciamento
-  
+
   admin:
     Nível: Account (empresa específica)
     Descrição: Administrador da empresa cliente
@@ -469,7 +457,7 @@ Hierarquia de Roles:
       - Configuração de Kanban/Pipelines
       - Acesso a relatórios da conta
       - Automações da conta
-  
+
   supervisor:
     Nível: Team (time específico)
     Descrição: Líder de equipe
@@ -477,7 +465,7 @@ Hierarquia de Roles:
       - Visualização de métricas do time
       - Reatribuição de conversas
       - Gestão de agentes do time
-  
+
   agent:
     Nível: Own (recursos próprios)
     Descrição: Atendente
@@ -493,126 +481,37 @@ Critérios de Aceite:
   - [ ] Agent só vê recursos atribuídos a si
 ```
 
-### AUTH-003: Audit Logging
+### AUTH-003: Audit Logging Avançado
 
-```yaml
-ID: AUTH-003
-Prioridade: P1
-Módulo: Auth
-Título: Registro de Auditoria
+**ID:** AUTH-003 | **Prioridade:** P0
 
-Descrição: |
-  Todas as ações sensíveis devem ser registradas para auditoria
-  e compliance.
+Registro imutável de ações críticas:
 
-Eventos a Registrar:
-  - Login/Logout
-  - Criação/Edição/Exclusão de recursos
-  - Mudanças de permissão
-  - Acesso a dados sensíveis
-  - Exports de dados
-  - Falhas de autenticação
-
-Estrutura do Log:
-  timestamp: ISO8601
-  user_id: UUID
-  account_id: UUID
-  action: string (create|read|update|delete|login|logout)
-  resource: string (user|kanban_card|provider|etc)
-  resource_id: string
-  ip_address: string
-  user_agent: string
-  old_value: JSON (opcional)
-  new_value: JSON (opcional)
-  status: string (success|failure)
-
-Critérios de Aceite:
-  - [ ] Logs são imutáveis (append-only)
-  - [ ] Retenção mínima de 1 ano
-  - [ ] Consulta por período, usuário, ação
-  - [ ] Export em formato CSV/JSON
-```
+- **Campos:** `account_id`, `user_id`, `action`, `resource_type`, `resource_id`, `ip`, `user_agent`, `old_value`, `new_value`.
+- **Escopo:** Login/Logout, Mudança de Permissão, Criação/Exclusão de Recursos, Acesso a Dados Sensíveis.
 
 ---
 
 ## 5.3 Módulo: Hub Manager (HUB)
 
-### HUB-001: Gestão de Accounts
+### HUB-001: Gestão de Accounts e Planos
 
-```yaml
-ID: HUB-001
-Prioridade: P0
-Módulo: Hub
-Título: Sincronização e Gestão de Accounts
+**ID:** HUB-001 | **Prioridade:** P0
 
-Descrição: |
-  O sistema deve sincronizar accounts (empresas) do Chatwoot e 
-  permitir configurações adicionais específicas do WhatPro Hub.
+Além da sincronização com Chatwoot, o Hub gerencia os planos SaaS:
 
-Sincronização:
-  - Fonte primária: Chatwoot (via API/Webhooks)
-  - Frequência: Real-time via webhooks + polling cada 5 min
-  - Campos sincronizados: id, name, locale, domain, created_at
+- **Tabela `account_entitlements`:** Define limites (`max_inboxes`, `max_agents`, etc) e feature flags (`kanban_enabled`).
+- **Tabela `usage_daily`:** Rastreia consumo diário para billing e dashboard (DAU, Mensagens, Requests).
 
-Campos Adicionais WhatPro:
-  - plan: string (free|starter|professional|enterprise)
-  - billing_email: string
-  - max_agents: integer
-  - features: JSON (feature flags habilitadas)
-  - settings: JSON (configurações customizadas)
+### HUB-002: Gestão de Providers Segura
 
-Critérios de Aceite:
-  - [ ] Novas accounts do Chatwoot aparecem automaticamente
-  - [ ] Admin pode editar apenas sua própria account
-  - [ ] Super admin pode editar todas as accounts
-  - [ ] Exclusão no Chatwoot marca como inativa no WhatPro
-```
+**ID:** HUB-002 | **Prioridade:** P0
 
-### HUB-002: Gestão de Providers
+Gestão de instâncias de WhatsApp (Evolution API, etc):
 
-```yaml
-ID: HUB-002
-Prioridade: P0
-Módulo: Hub
-Título: Cadastro e Gestão de Providers WhatsApp
-
-Descrição: |
-  O sistema deve permitir cadastrar e gerenciar múltiplos 
-  providers de WhatsApp (Evolution API, etc).
-
-Tipos de Provider Suportados:
-  - evolution_api: Evolution API v2
-  - baileys: Baileys Direct
-  - cloud_api: WhatsApp Cloud API
-  - twilio: Twilio WhatsApp
-
-Dados do Provider:
-  id: UUID
-  account_id: UUID
-  name: string
-  type: enum (evolution_api|baileys|cloud_api|twilio)
-  base_url: string (encrypted)
-  api_key: string (encrypted)
-  webhook_url: string (auto-generated)
-  status: enum (active|inactive|error)
-  health_check_interval: integer (seconds)
-  last_health_check: timestamp
-  metadata: JSON
-
-Funcionalidades:
-  - CRUD de providers
-  - Health check automático
-  - Webhook receiver para eventos
-  - Fallback entre providers
-  - Logs de conectividade
-
-Critérios de Aceite:
-  - [ ] Provider pode ser testado antes de salvar
-  - [ ] Credenciais são criptografadas em repouso
-  - [ ] Health check detecta problemas em < 60s
-  - [ ] Super admin vê todos os providers
-  - [ ] Admin vê apenas providers da sua account
-```
+- Credenciais armazenadas com criptografia (AES-GCM).
+- Tokens de instância gerados com escopo limitado.
+- Webhooks com validação de assinatura e verificação de idempotência (`event_id`).
 
 ### HUB-003: Gestão de Usuários
 
@@ -661,7 +560,7 @@ Módulo: Kanban
 Título: Criação e Gestão de Boards e Stages
 
 Descrição: |
-  O sistema deve permitir criar boards (quadros) com stages 
+  O sistema deve permitir criar boards (quadros) com stages
   (colunas) customizáveis para organização visual.
 
 Estrutura Hierárquica:
@@ -722,7 +621,7 @@ Modelo Card:
   conversation_id: integer (ID no Chatwoot)
   contact_id: integer (ID no Chatwoot)
   account_id: UUID
-  
+
   # Dados desnormalizados (cache do Chatwoot)
   contact_name: string
   contact_phone: string
@@ -733,7 +632,7 @@ Modelo Card:
   inbox_name: string
   assignee_id: integer
   assignee_name: string
-  
+
   # Dados específicos do WhatPro
   title: string (override do nome do contato)
   value: decimal (valor monetário)
@@ -742,7 +641,7 @@ Modelo Card:
   tags: array[string]
   custom_fields: JSON
   notes: string
-  
+
   # Metadados
   position: integer (ordenação no stage)
   moved_at: timestamp (última movimentação)
@@ -775,7 +674,7 @@ Descrição: |
   dentro do mesmo stage usando drag and drop.
 
 Comportamentos:
-  
+
   Mover entre Stages:
     1. Usuário arrasta card do Stage A para Stage B
     2. Frontend envia PATCH /api/v1/cards/{id}/move
@@ -783,7 +682,7 @@ Comportamentos:
     4. Registra histórico de movimentação
     5. Dispara automações configuradas
     6. Atualiza UI via WebSocket
-  
+
   Reordenar no Stage:
     1. Usuário arrasta card para nova posição
     2. Frontend envia PATCH /api/v1/cards/{id}/reorder
@@ -828,7 +727,7 @@ Filtros Disponíveis:
 Endpoint:
   GET /api/v1/boards/{board_id}/cards
   Query params: todos os filtros acima
-  
+
 Paginação:
   - Cursor-based (não offset)
   - Default: 50 cards por request
@@ -914,7 +813,7 @@ Ações Disponíveis:
     - create_card:
         board_id: UUID
         stage_id: UUID
-  
+
   Chatwoot Actions (via API):
     - assign_conversation:
         assignee_id: integer
@@ -924,7 +823,7 @@ Ações Disponíveis:
         message: string (suporta variáveis)
     - update_contact:
         fields: { custom_attributes, etc }
-  
+
   Notification Actions:
     - send_notification:
         channel: (email|slack|webhook)
@@ -933,7 +832,7 @@ Ações Disponíveis:
         title: string
         assignee_id: UUID
         due_date: timestamp
-  
+
   Integration Actions:
     - webhook:
         url: string
@@ -986,20 +885,20 @@ Métricas Disponíveis:
     - conversion_rate: Taxa de conversão (leads → fechados)
     - average_response_time: Tempo médio de primeira resposta
     - average_resolution_time: Tempo médio até resolução
-  
+
   Por Agente:
     - conversations_handled: Conversas atendidas
     - messages_sent: Mensagens enviadas
     - avg_response_time: Tempo médio de resposta
     - csat_score: Score de satisfação (se disponível)
     - cards_closed: Cards finalizados
-  
+
   Funil do Kanban:
     - cards_by_stage: Quantidade por estágio
     - avg_time_in_stage: Tempo médio em cada estágio
     - conversion_between_stages: Taxa de passagem entre estágios
     - bottleneck_stages: Estágios com acúmulo
-  
+
   Temporal:
     - hourly_activity: Atividade por hora do dia
     - daily_trend: Tendência diária
@@ -1031,7 +930,7 @@ NFR-PERF-001:
     95% das requisições devem ser respondidas em menos de 200ms
     99% das requisições devem ser respondidas em menos de 500ms
   Medição: Prometheus histogram no gateway
-  
+
 NFR-PERF-002:
   Título: Throughput
   Requisito: |
@@ -1064,13 +963,13 @@ NFR-AVAIL-001:
     SLA de 99.9% de disponibilidade mensal
     Máximo de 43 minutos de downtime por mês
   Medição: UptimeRobot ou similar
-  
+
 NFR-AVAIL-002:
   Título: Recovery Time Objective (RTO)
   Requisito: |
     Recuperação de falhas em menos de 15 minutos
     Failover automático para réplicas
-  
+
 NFR-AVAIL-003:
   Título: Recovery Point Objective (RPO)
   Requisito: |
@@ -1087,13 +986,13 @@ NFR-SEC-001:
   Requisito: |
     Todo tráfego deve usar TLS 1.2+
     HSTS habilitado com max-age de 1 ano
-    
+
 NFR-SEC-002:
   Título: Criptografia em Repouso
   Requisito: |
     Dados sensíveis criptografados com AES-256
     Chaves rotacionadas a cada 90 dias
-    
+
 NFR-SEC-003:
   Título: Autenticação
   Requisito: |
@@ -1101,7 +1000,7 @@ NFR-SEC-003:
     Refresh tokens com rotação
     Rate limiting: 100 req/min por IP não autenticado
     Rate limiting: 1000 req/min por usuário autenticado
-    
+
 NFR-SEC-004:
   Título: Headers de Segurança
   Requisito: |
@@ -1128,7 +1027,7 @@ NFR-SCALE-002:
     Isolamento completo entre accounts
     Suporte a 1000+ accounts simultâneas
     Performance consistente independente do número de tenants
-    
+
 NFR-SCALE-003:
   Título: Limites por Tenant
   Requisito: |
@@ -1428,7 +1327,7 @@ CREATE TABLE accounts (
     status          VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT accounts_plan_check CHECK (plan IN ('free', 'starter', 'professional', 'enterprise')),
     CONSTRAINT accounts_status_check CHECK (status IN ('active', 'suspended', 'deleted'))
 );
@@ -1456,7 +1355,7 @@ CREATE TABLE users (
     last_seen_at    TIMESTAMP WITH TIME ZONE,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT users_whatpro_role_check CHECK (whatpro_role IN ('super_admin', 'admin', 'supervisor', 'agent')),
     CONSTRAINT users_status_check CHECK (status IN ('active', 'inactive', 'deleted')),
     CONSTRAINT users_account_chatwoot_unique UNIQUE (account_id, chatwoot_id)
@@ -1481,7 +1380,7 @@ CREATE TABLE boards (
     created_by      UUID NOT NULL REFERENCES users(id),
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT boards_type_check CHECK (type IN ('leads', 'support', 'sales', 'custom'))
 );
 
@@ -1503,7 +1402,7 @@ CREATE TABLE stages (
     auto_actions    JSONB NOT NULL DEFAULT '[]',
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT stages_position_unique UNIQUE (board_id, position)
 );
 
@@ -1518,11 +1417,11 @@ CREATE TABLE cards (
     board_id            UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
     stage_id            UUID NOT NULL REFERENCES stages(id) ON DELETE RESTRICT,
     account_id          UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    
+
     -- Chatwoot References
     conversation_id     INTEGER NOT NULL,
     contact_id          INTEGER NOT NULL,
-    
+
     -- Denormalized Contact Data (cache)
     contact_name        VARCHAR(255),
     contact_phone       VARCHAR(50),
@@ -1531,10 +1430,10 @@ CREATE TABLE cards (
     last_message_at     TIMESTAMP WITH TIME ZONE,
     last_message_preview VARCHAR(200),
     inbox_name          VARCHAR(100),
-    
+
     -- Assignment
     assignee_id         UUID REFERENCES users(id) ON DELETE SET NULL,
-    
+
     -- Card Specific Data
     title               VARCHAR(255),
     value               DECIMAL(15, 2),
@@ -1543,15 +1442,15 @@ CREATE TABLE cards (
     tags                TEXT[] NOT NULL DEFAULT '{}',
     custom_fields       JSONB NOT NULL DEFAULT '{}',
     notes               TEXT,
-    
+
     -- Positioning
     position            INTEGER NOT NULL DEFAULT 0,
     moved_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     -- Metadata
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT cards_priority_check CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
     CONSTRAINT cards_account_conversation_unique UNIQUE (account_id, conversation_id)
 );
@@ -1594,27 +1493,27 @@ CREATE TABLE providers (
     account_id              UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     name                    VARCHAR(100) NOT NULL,
     type                    VARCHAR(50) NOT NULL,
-    
+
     -- Encrypted Configuration
     base_url                TEXT NOT NULL,
     api_key_encrypted       BYTEA NOT NULL,
-    
+
     -- Webhook
     webhook_url             VARCHAR(512) NOT NULL,
     webhook_secret          VARCHAR(255) NOT NULL,
-    
+
     -- Status
     status                  VARCHAR(20) NOT NULL DEFAULT 'active',
     health_status           VARCHAR(20) NOT NULL DEFAULT 'unknown',
     health_check_interval   INTEGER NOT NULL DEFAULT 60,
     last_health_check       TIMESTAMP WITH TIME ZONE,
     last_error              TEXT,
-    
+
     -- Metadata
     metadata                JSONB NOT NULL DEFAULT '{}',
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT providers_type_check CHECK (type IN ('evolution_api', 'baileys', 'cloud_api', 'twilio')),
     CONSTRAINT providers_status_check CHECK (status IN ('active', 'inactive', 'error')),
     CONSTRAINT providers_health_check CHECK (health_status IN ('healthy', 'unhealthy', 'unknown'))
@@ -1633,21 +1532,21 @@ CREATE TABLE automations (
     name            VARCHAR(100) NOT NULL,
     description     VARCHAR(500),
     enabled         BOOLEAN NOT NULL DEFAULT TRUE,
-    
+
     -- Trigger
     trigger_type    VARCHAR(50) NOT NULL,
     trigger_config  JSONB NOT NULL DEFAULT '{}',
-    
+
     -- Conditions (evaluated before actions)
     conditions      JSONB NOT NULL DEFAULT '{"and": []}',
-    
+
     -- Actions (executed in order)
     actions         JSONB NOT NULL DEFAULT '[]',
-    
+
     -- Statistics
     execution_count INTEGER NOT NULL DEFAULT 0,
     last_executed   TIMESTAMP WITH TIME ZONE,
-    
+
     -- Metadata
     created_by      UUID NOT NULL REFERENCES users(id),
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -1666,27 +1565,27 @@ CREATE TABLE audit_logs (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
     account_id      UUID REFERENCES accounts(id) ON DELETE SET NULL,
-    
+
     -- Action Details
     action          VARCHAR(50) NOT NULL,
     resource        VARCHAR(100) NOT NULL,
     resource_id     VARCHAR(255),
-    
+
     -- Request Context
     ip_address      INET,
     user_agent      TEXT,
     request_id      VARCHAR(100),
-    
+
     -- Changes
     old_value       JSONB,
     new_value       JSONB,
-    
+
     -- Result
     status          VARCHAR(20) NOT NULL DEFAULT 'success',
     error_message   TEXT,
-    
+
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT audit_logs_status_check CHECK (status IN ('success', 'failure'))
 ) PARTITION BY RANGE (created_at);
 
@@ -1789,26 +1688,29 @@ Request:
 
 Response 200:
   {
-    "data": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      "expires_at": "2026-02-01T10:00:00Z",
-      "user": {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "email": "user@example.com",
-        "name": "John Doe",
-        "role": "admin",
-        "account_id": "550e8400-e29b-41d4-a716-446655440001",
-        "account_name": "Acme Inc"
-      }
-    }
+    "data":
+      {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "expires_at": "2026-02-01T10:00:00Z",
+        "user":
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "email": "user@example.com",
+            "name": "John Doe",
+            "role": "admin",
+            "account_id": "550e8400-e29b-41d4-a716-446655440001",
+            "account_name": "Acme Inc",
+          },
+      },
   }
 
 Response 401:
   {
-    "error": {
-      "code": "INVALID_TOKEN",
-      "message": "Chatwoot token is invalid or expired"
-    }
+    "error":
+      {
+        "code": "INVALID_TOKEN",
+        "message": "Chatwoot token is invalid or expired",
+      },
   }
 ```
 
@@ -1824,10 +1726,11 @@ Request:
 
 Response 200:
   {
-    "data": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      "expires_at": "2026-02-01T10:00:00Z"
-    }
+    "data":
+      {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "expires_at": "2026-02-01T10:00:00Z",
+      },
   }
 ```
 
@@ -1847,18 +1750,19 @@ Request:
 
 Response 200:
   {
-    "data": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "name": "Pipeline de Vendas",
-        "description": "Gestão de leads e oportunidades",
-        "type": "leads",
-        "is_default": true,
-        "stages_count": 5,
-        "cards_count": 42,
-        "created_at": "2026-01-15T10:00:00Z"
-      }
-    ]
+    "data":
+      [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "Pipeline de Vendas",
+          "description": "Gestão de leads e oportunidades",
+          "type": "leads",
+          "is_default": true,
+          "stages_count": 5,
+          "cards_count": 42,
+          "created_at": "2026-01-15T10:00:00Z",
+        },
+      ],
   }
 ```
 
@@ -1906,34 +1810,37 @@ Example Request:
   {
     "name": "Pipeline de Vendas",
     "type": "leads",
-    "stages": [
-      { "name": "Novo Lead", "color": "#3B82F6" },
-      { "name": "Em Qualificação", "color": "#F59E0B" },
-      { "name": "Proposta Enviada", "color": "#8B5CF6" },
-      { "name": "Negociação", "color": "#10B981" },
-      { "name": "Fechado", "color": "#059669" }
-    ]
+    "stages":
+      [
+        { "name": "Novo Lead", "color": "#3B82F6" },
+        { "name": "Em Qualificação", "color": "#F59E0B" },
+        { "name": "Proposta Enviada", "color": "#8B5CF6" },
+        { "name": "Negociação", "color": "#10B981" },
+        { "name": "Fechado", "color": "#059669" },
+      ],
   }
 
 Response 201:
   {
-    "data": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Pipeline de Vendas",
-      "type": "leads",
-      "stages": [
-        { "id": "...", "name": "Novo Lead", "position": 0 },
-        { "id": "...", "name": "Em Qualificação", "position": 1 },
-        ...
-      ],
-      "created_at": "2026-01-31T10:00:00Z"
-    }
+    "data":
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Pipeline de Vendas",
+        "type": "leads",
+        "stages":
+          [
+            { "id": "...", "name": "Novo Lead", "position": 0 },
+            { "id": "...", "name": "Em Qualificação", "position": 1 },
+            ...,
+          ],
+        "created_at": "2026-01-31T10:00:00Z",
+      },
   }
 ```
 
 ## 9.4 Cards
 
-### GET /boards/{board_id}/cards
+### GET /boards//cards
 
 ```yaml
 Summary: Listar cards de um board
@@ -1995,7 +1902,7 @@ Response 200:
   }
 ```
 
-### POST /cards/{card_id}/move
+### POST /cards//move
 
 ```yaml
 Summary: Mover card para outro stage
@@ -2022,26 +1929,29 @@ Request:
 
 Response 200:
   {
-    "data": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "stage_id": "550e8400-e29b-41d4-a716-446655440002",
-      "position": 0,
-      "moved_at": "2026-01-31T10:00:00Z",
-      "history_entry": {
-        "id": "...",
-        "from_stage": "Novo Lead",
-        "to_stage": "Em Qualificação",
-        "moved_by": "João Silva"
-      }
-    }
+    "data":
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "stage_id": "550e8400-e29b-41d4-a716-446655440002",
+        "position": 0,
+        "moved_at": "2026-01-31T10:00:00Z",
+        "history_entry":
+          {
+            "id": "...",
+            "from_stage": "Novo Lead",
+            "to_stage": "Em Qualificação",
+            "moved_by": "João Silva",
+          },
+      },
   }
 
 Response 403:
   {
-    "error": {
-      "code": "FORBIDDEN",
-      "message": "You can only move cards assigned to you"
-    }
+    "error":
+      {
+        "code": "FORBIDDEN",
+        "message": "You can only move cards assigned to you",
+      },
   }
 ```
 
@@ -2065,8 +1975,13 @@ Request:
   Body:
     event:
       type: string
-      enum: [conversation_created, conversation_status_changed, 
-             message_created, conversation_updated]
+      enum:
+        [
+          conversation_created,
+          conversation_status_changed,
+          message_created,
+          conversation_updated,
+        ]
     id:
       type: integer
     account:
@@ -2080,39 +1995,35 @@ Example - conversation_created:
   {
     "event": "conversation_created",
     "id": 12345,
-    "account": {
-      "id": 1,
-      "name": "Acme Inc"
-    },
-    "conversation": {
-      "id": 12345,
-      "status": "open",
-      "inbox_id": 1,
-      "contact_inbox": {
-        "contact": {
-          "id": 67890,
-          "name": "Maria Silva",
-          "phone_number": "+5511999999999"
-        }
+    "account": { "id": 1, "name": "Acme Inc" },
+    "conversation":
+      {
+        "id": 12345,
+        "status": "open",
+        "inbox_id": 1,
+        "contact_inbox":
+          {
+            "contact":
+              {
+                "id": 67890,
+                "name": "Maria Silva",
+                "phone_number": "+5511999999999",
+              },
+          },
+        "messages":
+          [{ "content": "Olá, preciso de ajuda", "created_at": 1706698800 }],
       },
-      "messages": [
-        {
-          "content": "Olá, preciso de ajuda",
-          "created_at": 1706698800
-        }
-      ]
-    }
   }
 
-Response 200:
-  { "status": "ok" }
+Response 200: { "status": "ok" }
 
 Response 401:
   {
-    "error": {
-      "code": "INVALID_SIGNATURE",
-      "message": "Webhook signature verification failed"
-    }
+    "error":
+      {
+        "code": "INVALID_SIGNATURE",
+        "message": "Webhook signature verification failed",
+      },
   }
 ```
 
@@ -2126,19 +2037,20 @@ Description: Retorna providers da account (admin) ou todos (super_admin)
 
 Response 200:
   {
-    "data": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "name": "Evolution Principal",
-        "type": "evolution_api",
-        "base_url": "https://evolution.example.com",
-        "webhook_url": "https://api.whatpro.com.br/webhooks/provider/abc123",
-        "status": "active",
-        "health_status": "healthy",
-        "last_health_check": "2026-01-31T09:55:00Z",
-        "created_at": "2026-01-15T10:00:00Z"
-      }
-    ]
+    "data":
+      [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "Evolution Principal",
+          "type": "evolution_api",
+          "base_url": "https://evolution.example.com",
+          "webhook_url": "https://api.whatpro.com.br/webhooks/provider/abc123",
+          "status": "active",
+          "health_status": "healthy",
+          "last_health_check": "2026-01-31T09:55:00Z",
+          "created_at": "2026-01-15T10:00:00Z",
+        },
+      ],
   }
 ```
 
@@ -2173,18 +2085,19 @@ Request:
 
 Response 201:
   {
-    "data": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Evolution Principal",
-      "type": "evolution_api",
-      "webhook_url": "https://api.whatpro.com.br/webhooks/provider/abc123",
-      "status": "active",
-      "created_at": "2026-01-31T10:00:00Z"
-    }
+    "data":
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Evolution Principal",
+        "type": "evolution_api",
+        "webhook_url": "https://api.whatpro.com.br/webhooks/provider/abc123",
+        "status": "active",
+        "created_at": "2026-01-31T10:00:00Z",
+      },
   }
 ```
 
-### POST /providers/{id}/test
+### POST /providers//test
 
 ```yaml
 Summary: Testar conexão com provider
@@ -2192,25 +2105,22 @@ Description: Executa health check manual
 
 Response 200:
   {
-    "data": {
-      "status": "healthy",
-      "latency_ms": 145,
-      "details": {
-        "version": "2.0.0",
-        "connected_sessions": 5
-      }
-    }
+    "data":
+      {
+        "status": "healthy",
+        "latency_ms": 145,
+        "details": { "version": "2.0.0", "connected_sessions": 5 },
+      },
   }
 
 Response 503:
   {
-    "error": {
-      "code": "PROVIDER_UNAVAILABLE",
-      "message": "Failed to connect to provider",
-      "details": {
-        "error": "Connection timeout after 5000ms"
-      }
-    }
+    "error":
+      {
+        "code": "PROVIDER_UNAVAILABLE",
+        "message": "Failed to connect to provider",
+        "details": { "error": "Connection timeout after 5000ms" },
+      },
   }
 ```
 
@@ -2433,10 +2343,10 @@ Dashboard Apps:
   Capacidades:
     - Iframe em aba da conversa
     - Recebe contexto via postMessage:
-      - conversation_id
-      - contact info
-      - assignee info
-      - messages
+        - conversation_id
+        - contact info
+        - assignee info
+        - messages
   Casos de uso:
     - Kanban contextual
     - CRM do contato
@@ -2502,11 +2412,11 @@ Endpoints utilizados:
   Health Check:
     GET /instance/connectionState/{instance}
     Response: { state: "open" | "close" | "connecting" }
-  
+
   Send Message:
     POST /message/sendText/{instance}
     Body: { number, text, options }
-  
+
   Webhook Events:
     - messages.upsert: Nova mensagem
     - connection.update: Status da conexão
@@ -2535,15 +2445,16 @@ Payload enviado pelo WhatPro:
   {
     "event": "card.moved",
     "timestamp": "2026-01-31T10:00:00Z",
-    "card": {
-      "id": "...",
-      "title": "...",
-      "contact": { ... },
-      "from_stage": "...",
-      "to_stage": "..."
-    },
+    "card":
+      {
+        "id": "...",
+        "title": "...",
+        "contact": { ... },
+        "from_stage": "...",
+        "to_stage": "...",
+      },
     "account": { ... },
-    "user": { ... }
+    "user": { ... },
   }
 ```
 
@@ -2614,12 +2525,12 @@ Security (CC - Common Criteria):
   CC1.1: Definição de responsabilidades de segurança
     - Documentação de políticas
     - Treinamento de equipe
-    
+
   CC6.1: Controle de acesso lógico
     - RBAC implementado
     - MFA recomendado
     - Session management
-    
+
   CC6.6: Proteção contra ameaças externas
     - Firewall (Cloudflare WAF)
     - IDS/IPS
@@ -2630,7 +2541,7 @@ Availability (A):
     - SLA 99.9%
     - Auto-scaling
     - Health checks
-    
+
   A1.2: Recuperação de desastres
     - Backup diário
     - RPO < 5 min
@@ -2641,7 +2552,7 @@ Confidentiality (C):
   C1.1: Classificação de dados
     - PII identificado e marcado
     - Encryption at rest
-    
+
   C1.2: Controle de acesso a dados confidenciais
     - RBAC
     - Audit logging
@@ -2657,7 +2568,7 @@ Privacy (P):
   P1.1: Notificação de privacidade
     - Política de privacidade
     - Termos de uso
-    
+
   P3.1: Coleta de dados pessoais
     - Data minimization
     - Consent management
@@ -2708,17 +2619,17 @@ Application Metrics:
   http_request_duration_seconds{method, path}
   http_request_size_bytes{method, path}
   http_response_size_bytes{method, path}
-  
+
   # Business Metrics
   whatpro_cards_total{account_id, board_id, stage_id}
   whatpro_cards_moved_total{account_id, from_stage, to_stage}
   whatpro_webhooks_received_total{event_type, status}
   whatpro_webhooks_processing_duration_seconds{event_type}
-  
+
   # Auth Metrics
   whatpro_auth_attempts_total{status}
   whatpro_active_sessions{account_id}
-  
+
   # Provider Metrics
   whatpro_provider_health_status{provider_id, status}
   whatpro_provider_requests_total{provider_id, status}
@@ -2729,12 +2640,12 @@ Infrastructure Metrics:
   pg_stat_activity_count
   pg_replication_lag_seconds
   pg_database_size_bytes
-  
+
   # Redis
   redis_connected_clients
   redis_used_memory_bytes
   redis_commands_processed_total
-  
+
   # Go Runtime
   go_goroutines
   go_gc_duration_seconds
@@ -2758,7 +2669,7 @@ Log Format:
     "status": 200,
     "duration_ms": 45,
     "ip": "192.168.1.100",
-    "user_agent": "Mozilla/5.0..."
+    "user_agent": "Mozilla/5.0...",
   }
 
 Log Levels:
@@ -2804,7 +2715,7 @@ Info Alerts (Email daily digest):
 
 ```yaml
 # docker-compose.prod.yml
-version: '3.8'
+version: "3.8"
 
 services:
   traefik:
@@ -2928,17 +2839,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      
+          go-version: "1.22"
+
       - name: Run tests
         run: |
           cd apps/api
           go test -v -race -coverprofile=coverage.out ./...
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
@@ -2948,7 +2859,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
@@ -2958,19 +2869,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
+          scan-type: "fs"
+          scan-ref: "."
 
   build:
     needs: [test, lint, security]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Build and push Docker images
         run: |
           docker build -t whatpro/hub-api:${{ github.sha }} apps/api
@@ -3100,22 +3011,22 @@ M4 - GA (Semana 30):
 
 # 16. Glossário
 
-| Termo | Definição |
-|-------|-----------|
-| **Account** | Entidade que representa uma empresa/cliente no sistema. Sincronizada do Chatwoot. |
-| **Board** | Quadro Kanban contendo stages e cards. Uma account pode ter múltiplos boards. |
-| **Card** | Representação visual de uma conversa/lead no Kanban. Vinculado a uma conversation do Chatwoot. |
-| **Chatwoot** | Plataforma open-source de atendimento ao cliente que serve como base para o WhatPro Hub. |
-| **Dashboard App** | Mecanismo do Chatwoot para integrar aplicações externas via iframe no painel do agente. |
-| **Dashboard Script** | Código JavaScript injetado globalmente no Chatwoot para customizações. |
-| **HMAC** | Hash-based Message Authentication Code. Usado para verificar autenticidade de webhooks. |
-| **JWT** | JSON Web Token. Padrão para tokens de autenticação. |
-| **Provider** | Serviço externo de WhatsApp (Evolution API, etc) gerenciado pelo WhatPro Hub. |
-| **RBAC** | Role-Based Access Control. Modelo de controle de acesso baseado em papéis. |
-| **Stage** | Coluna dentro de um board Kanban. Representa uma etapa do processo. |
-| **SSO** | Single Sign-On. Autenticação única que permite acesso a múltiplos sistemas. |
-| **Tenant** | Instância isolada de dados de uma account. Multi-tenancy significa múltiplos tenants. |
-| **Webhook** | Callback HTTP disparado quando um evento ocorre. Usado para integração em tempo real. |
+| Termo                | Definição                                                                                      |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| **Account**          | Entidade que representa uma empresa/cliente no sistema. Sincronizada do Chatwoot.              |
+| **Board**            | Quadro Kanban contendo stages e cards. Uma account pode ter múltiplos boards.                  |
+| **Card**             | Representação visual de uma conversa/lead no Kanban. Vinculado a uma conversation do Chatwoot. |
+| **Chatwoot**         | Plataforma open-source de atendimento ao cliente que serve como base para o WhatPro Hub.       |
+| **Dashboard App**    | Mecanismo do Chatwoot para integrar aplicações externas via iframe no painel do agente.        |
+| **Dashboard Script** | Código JavaScript injetado globalmente no Chatwoot para customizações.                         |
+| **HMAC**             | Hash-based Message Authentication Code. Usado para verificar autenticidade de webhooks.        |
+| **JWT**              | JSON Web Token. Padrão para tokens de autenticação.                                            |
+| **Provider**         | Serviço externo de WhatsApp (Evolution API, etc) gerenciado pelo WhatPro Hub.                  |
+| **RBAC**             | Role-Based Access Control. Modelo de controle de acesso baseado em papéis.                     |
+| **Stage**            | Coluna dentro de um board Kanban. Representa uma etapa do processo.                            |
+| **SSO**              | Single Sign-On. Autenticação única que permite acesso a múltiplos sistemas.                    |
+| **Tenant**           | Instância isolada de dados de uma account. Multi-tenancy significa múltiplos tenants.          |
+| **Webhook**          | Callback HTTP disparado quando um evento ocorre. Usado para integração em tempo real.          |
 
 ---
 
@@ -3214,26 +3125,26 @@ func (h *AuthHandler) SSO(c *fiber.Ctx) error {
     if err := c.BodyParser(&req); err != nil {
         return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
     }
-    
+
     // Validate against Chatwoot
-    cwUser, err := h.chatwootService.ValidateToken(c.Context(), 
+    cwUser, err := h.chatwootService.ValidateToken(c.Context(),
         req.AccessToken, req.Client, req.UID)
     if err != nil {
         return fiber.NewError(fiber.StatusUnauthorized, "Invalid Chatwoot token")
     }
-    
+
     // Create or update local user
     user, err := h.authService.SyncUser(c.Context(), cwUser)
     if err != nil {
         return fiber.NewError(fiber.StatusInternalServerError, "Failed to sync user")
     }
-    
+
     // Generate JWT
     token, expiresAt, err := h.authService.GenerateJWT(user)
     if err != nil {
         return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate token")
     }
-    
+
     return c.JSON(fiber.Map{
         "data": SSOResponse{
             Token:     token,
@@ -3286,9 +3197,9 @@ var RolePermissions = map[string][]Permission{
 func RequirePermission(resource, action string) fiber.Handler {
     return func(c *fiber.Ctx) error {
         user := c.Locals("user").(*models.User)
-        
+
         permissions := RolePermissions[user.WhatproRole]
-        
+
         for _, p := range permissions {
             if matchesPermission(p, resource, action) {
                 // Store scope for repository queries
@@ -3296,8 +3207,8 @@ func RequirePermission(resource, action string) fiber.Handler {
                 return c.Next()
             }
         }
-        
-        return fiber.NewError(fiber.StatusForbidden, 
+
+        return fiber.NewError(fiber.StatusForbidden,
             "Insufficient permissions for this action")
     }
 }
@@ -3355,10 +3266,10 @@ func matchesPermission(p Permission, resource, action string) bool {
 
 **Este documento é uma especificação viva e deve ser atualizado conforme o desenvolvimento evolui.**
 
-**Versão:** 1.0.0  
-**Última atualização:** 2026-01-31  
+**Versão:** 1.0.0
+**Última atualização:** 2026-01-31
 **Status:** Aprovado para desenvolvimento
 
 ---
 
-*Fim do documento PRD - WhatPro Hub*
+_Fim do documento PRD - WhatPro Hub_

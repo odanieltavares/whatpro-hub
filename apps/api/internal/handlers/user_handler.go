@@ -77,6 +77,11 @@ func (h *Handler) CreateUser(c *fiber.Ctx) error {
 		return err
 	}
 
+	// CHECK ENTITLEMENTS (Quota)
+	if err := h.EntitlementsService.CanCreateResource(accountID, "agent"); err != nil {
+		return h.Error(c, fiber.StatusForbidden, err.Error())
+	}
+
 	user := &models.User{
 		AccountID:   accountID,
 		Name:        req.Name,

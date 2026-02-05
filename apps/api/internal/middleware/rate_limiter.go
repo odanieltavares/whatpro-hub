@@ -117,11 +117,8 @@ func NewRoleRateLimiter(rdb *redisClient.Client) fiber.Handler {
 			})
 		},
 		Next: func(c *fiber.Ctx) bool {
-			// Skip rate limiting for super_admin and admin
-			role, ok := c.Locals("whatpro_role").(string)
-			if ok && (role == "super_admin" || role == "admin") {
-				return true
-			}
+			// Do NOT skip super_admin completely, they just get a higher limit (handled by KeyGenerator logic)
+			// This ensures even admins cannot DDoS the system
 			return false
 		},
 		Storage: storage,
