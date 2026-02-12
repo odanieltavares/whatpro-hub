@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset='utf-8'><title>mailers/conversation_reply_mailer/conversation_transcript.html.erb</title></head><body>#
+  <tr>
+    <td>
+      <b>#</b>
+      #
+        <div style="font-size: 90%; color: #899096; line-height: 16px">
+          #
+            <div>From: #</div>
+          #
+            <div>From: #</div>
+          #
+
+          #
+            <div>Subject: #</div>
+          #
+
+          #
+            <div>To: #</div>
+          #
+          #
+            <div>CC: #</div>
+          #
+          #
+            <div>BCC: #</div>
+          #
+        </div>
+      #
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom: 32px;">
+      #
+        #
+      #
+      #
+        <p>Attachments:</p>
+        #
+          <p><a href="#" target="_blank">#</a></p>
+        #
+      #
+      <p style="font-size: 90%; font-size: 90%;color: #899096;margin-top: -8px; margin-bottom: 0px;">
+      #
+        <%= message.created_at.in_time_zone(@inbox.timezone).strftime('%b %d, %I:%M %p %Z') %>
+      #
+        <%= message.created_at.strftime('%b %d, %I:%M %p %Z') %>
+      #
+      </p>
+    </td>
+  </tr>
+#
+</body></html>

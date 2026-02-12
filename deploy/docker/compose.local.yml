@@ -1,0 +1,14 @@
+name: whatpro
+
+services:
+  whatpro_api:
+    environment:
+      APP_ENV: development
+  whatpro_worker:
+    environment:
+      APP_ENV: development
+  chatwoot_app:
+    environment:
+      CHATWOOT_ENV: development
+      ENABLE_ACCOUNT_SIGNUP: "true"
+      ENABLE_RACK_ATTACK: "false"

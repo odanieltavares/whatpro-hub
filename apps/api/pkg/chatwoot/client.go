@@ -202,6 +202,38 @@ func (c *Client) ListLabels(accountID int) ([]Label, error) {
 	return response.Payload, nil
 }
 
+// GetConversation returns a conversation payload
+func (c *Client) GetConversation(accountID, conversationID int) (map[string]interface{}, error) {
+	endpoint := fmt.Sprintf("/api/v1/accounts/%d/conversations/%d", accountID, conversationID)
+	resp, err := c.doRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var payload map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	return payload, nil
+}
+
+// GetConversationMessages returns conversation messages payload
+func (c *Client) GetConversationMessages(accountID, conversationID int) (map[string]interface{}, error) {
+	endpoint := fmt.Sprintf("/api/v1/accounts/%d/conversations/%d/messages", accountID, conversationID)
+	resp, err := c.doRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var payload map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	return payload, nil
+}
+
 // doRequest performs an HTTP request
 func (c *Client) doRequest(method, endpoint string, body io.Reader) (*http.Response, error) {
 	url := c.BaseURL + endpoint

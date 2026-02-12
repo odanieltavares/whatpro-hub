@@ -14,6 +14,7 @@ import (
 	"whatpro-hub/internal/middleware"
 	"whatpro-hub/internal/repositories"
 	"whatpro-hub/internal/services"
+	"whatpro-hub/pkg/chatwoot"
 )
 
 // Handler holds all dependencies for API handlers
@@ -31,6 +32,7 @@ type Handler struct {
 	KanbanService       *services.KanbanService
 	GatewayService      *services.GatewayService
 	BillingService      *services.BillingService
+	ChatService         *services.ChatService // Internal Chat Service
 	Validator           *validator.Validate
 	Logger              *log.Logger
 }
@@ -51,7 +53,7 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 	// Initialize services
 	accountService := services.NewAccountService(accountRepo, cfg.ChatwootURL, cfg.ChatwootAPIKey)
 	auditService := services.NewAuditService(auditRepo)
-	teamService := services.NewTeamService(teamRepo)
+	teamService := services.NewTeamService(teamRepo, userRepo)
 	userService := services.NewUserService(userRepo)
 	authService := services.NewAuthService(sessionRepo, userRepo)
 	entitlementsService := services.NewEntitlementsService(db) // Initialize EntitlementsService
@@ -67,6 +69,11 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 		log.Fatalf("Failed to initialize provider service: %v", err)
 	}
 
+	// Initialize Chat service
+	chatRepo := repositories.NewChatRepository(db)
+	chatwootClient := chatwoot.New(cfg.ChatwootURL, cfg.ChatwootAPIKey)
+	chatService := services.NewChatService(chatRepo, auditRepo, userRepo, chatwootClient)
+
 	return &Handler{
 		DB:                  db,
 		Redis:               rdb,
@@ -81,6 +88,7 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 		KanbanService:       kanbanService,
 		GatewayService:      gatewayService,
 		BillingService:      billingService,
+		ChatService:         chatService, // Internal Chat
 		Validator:           middleware.GetValidator(),
 		Logger:              log.Default(),
 	}

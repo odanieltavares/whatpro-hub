@@ -49,6 +49,20 @@ func (r *KanbanRepository) GetBoard(ctx context.Context, id uuid.UUID) (*models.
 	return &board, nil
 }
 
+// GetBoardForAccount returns a board by ID scoped to an account
+func (r *KanbanRepository) GetBoardForAccount(ctx context.Context, id uuid.UUID, accountID int) (*models.Board, error) {
+	var board models.Board
+	if err := r.db.WithContext(ctx).Preload("Stages", func(db *gorm.DB) *gorm.DB {
+		return db.Order("position ASC")
+	}).First(&board, "id = ? AND account_id = ?", id, accountID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrBoardNotFound
+		}
+		return nil, err
+	}
+	return &board, nil
+}
+
 // ListBoards returns all boards for an account
 func (r *KanbanRepository) ListBoards(ctx context.Context, accountID int) ([]models.Board, error) {
 	var boards []models.Board
@@ -93,6 +107,22 @@ func (r *KanbanRepository) CreateStage(ctx context.Context, stage *models.Stage)
 func (r *KanbanRepository) GetStage(ctx context.Context, id uuid.UUID) (*models.Stage, error) {
 	var stage models.Stage
 	if err := r.db.WithContext(ctx).First(&stage, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrStageNotFound
+		}
+		return nil, err
+	}
+	return &stage, nil
+}
+
+// GetStageForAccount returns a stage by ID scoped to an account
+func (r *KanbanRepository) GetStageForAccount(ctx context.Context, id uuid.UUID, accountID int) (*models.Stage, error) {
+	var stage models.Stage
+	if err := r.db.WithContext(ctx).
+		Table("stages").
+		Joins("JOIN boards ON boards.id = stages.board_id").
+		Where("stages.id = ? AND boards.account_id = ?", id, accountID).
+		First(&stage).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrStageNotFound
 		}
@@ -148,6 +178,23 @@ func (r *KanbanRepository) CreateCard(ctx context.Context, card *models.Card) er
 func (r *KanbanRepository) GetCard(ctx context.Context, id uuid.UUID) (*models.Card, error) {
 	var card models.Card
 	if err := r.db.WithContext(ctx).First(&card, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCardNotFound
+		}
+		return nil, err
+	}
+	return &card, nil
+}
+
+// GetCardForAccount returns a card by ID scoped to an account
+func (r *KanbanRepository) GetCardForAccount(ctx context.Context, id uuid.UUID, accountID int) (*models.Card, error) {
+	var card models.Card
+	if err := r.db.WithContext(ctx).
+		Table("cards").
+		Joins("JOIN stages ON stages.id = cards.stage_id").
+		Joins("JOIN boards ON boards.id = stages.board_id").
+		Where("cards.id = ? AND boards.account_id = ?", id, accountID).
+		First(&card).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrCardNotFound
 		}
@@ -218,6 +265,24 @@ func (r *KanbanRepository) GetCardWithDetails(ctx context.Context, id uuid.UUID)
 			return db.Order("position ASC")
 		}).
 		Where("id = ?", id).
+		First(&card).Error; err != nil {
+		return nil, err
+	}
+	return &card, nil
+}
+
+// GetCardWithDetailsForAccount fetches a card with relations scoped to an account
+func (r *KanbanRepository) GetCardWithDetailsForAccount(ctx context.Context, id uuid.UUID, accountID int) (*models.Card, error) {
+	var card models.Card
+	if err := r.db.WithContext(ctx).
+		Preload("SelectedCompany").
+		Preload("Checklist", func(db *gorm.DB) *gorm.DB {
+			return db.Order("position ASC")
+		}).
+		Table("cards").
+		Joins("JOIN stages ON stages.id = cards.stage_id").
+		Joins("JOIN boards ON boards.id = stages.board_id").
+		Where("cards.id = ? AND boards.account_id = ?", id, accountID).
 		First(&card).Error; err != nil {
 		return nil, err
 	}

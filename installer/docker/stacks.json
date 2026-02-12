@@ -1,0 +1,38 @@
+{
+  "dev": [
+    {
+      "name": "traefik",
+      "file": "compose.edge.dev.yml"
+    },
+    {
+      "name": "portainer",
+      "file": "compose.portainer.dev.yml"
+    },
+    {
+      "name": "whatpro-hub",
+      "file": "compose.app.dev.yml"
+    },
+    {
+      "name": "chatwoot",
+      "file": "compose.chatwoot.dev.yml"
+    }
+  ],
+  "prod": [
+    {
+      "name": "traefik",
+      "file": "compose.edge.prod.yml"
+    },
+    {
+      "name": "portainer",
+      "file": "compose.portainer.prod.yml"
+    },
+    {
+      "name": "whatpro-hub",
+      "file": "compose.app.prod.yml"
+    },
+    {
+      "name": "chatwoot",
+      "file": "compose.chatwoot.prod.yml"
+    }
+  ]
+}

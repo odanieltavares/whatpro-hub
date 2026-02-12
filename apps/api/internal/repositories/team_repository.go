@@ -44,6 +44,20 @@ func (r *TeamRepository) FindByID(ctx context.Context, id uint) (*models.Team, e
 	return &team, nil
 }
 
+func (r *TeamRepository) FindByIDForAccount(ctx context.Context, id uint, accountID int) (*models.Team, error) {
+	var team models.Team
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND account_id = ?", id, accountID).
+		First(&team).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrTeamNotFound
+		}
+		return nil, err
+	}
+	return &team, nil
+}
+
 func (r *TeamRepository) Create(ctx context.Context, team *models.Team) error {
 	return r.db.WithContext(ctx).Create(team).Error
 }
@@ -54,6 +68,19 @@ func (r *TeamRepository) Update(ctx context.Context, team *models.Team) error {
 
 func (r *TeamRepository) Delete(ctx context.Context, id uint) error {
 	result := r.db.WithContext(ctx).Delete(&models.Team{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrTeamNotFound
+	}
+	return nil
+}
+
+func (r *TeamRepository) DeleteForAccount(ctx context.Context, id uint, accountID int) error {
+	result := r.db.WithContext(ctx).
+		Where("id = ? AND account_id = ?", id, accountID).
+		Delete(&models.Team{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -84,6 +111,17 @@ func (r *TeamRepository) GetMembers(ctx context.Context, teamID uint) ([]models.
 		Table("users").
 		Joins("JOIN team_members ON team_members.user_id = users.id").
 		Where("team_members.team_id = ?", teamID).
+		Find(&users).Error
+	return users, err
+}
+
+func (r *TeamRepository) GetMembersForAccount(ctx context.Context, teamID uint, accountID int) ([]models.User, error) {
+	var users []models.User
+	err := r.db.WithContext(ctx).
+		Table("users").
+		Joins("JOIN team_members ON team_members.user_id = users.id").
+		Joins("JOIN teams ON teams.id = team_members.team_id").
+		Where("team_members.team_id = ? AND teams.account_id = ?", teamID, accountID).
 		Find(&users).Error
 	return users, err
 }

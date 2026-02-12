@@ -1,0 +1,144 @@
+name: whatpro-hub
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  pgvector:
+    image: pgvector/pgvector:pg16
+    <<: *default-restart
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-whatpro_hub}
+      PGSSLMODE: ${PGSSLMODE:-disable}
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - app
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7-alpine
+    <<: *default-restart
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - app
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$REDIS_PASSWORD", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  whatpro_api:
+    image: whatpro/hub-api:latest
+    <<: *default-restart
+    networks:
+      - app
+      - traefik
+    depends_on:
+      pgvector:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_PORT: 3000
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@pgvector:5432/${POSTGRES_DB:-whatpro_hub}?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CHATWOOT_URL: ${CHATWOOT_URL:-http://chatwoot_app:3000}
+      CHATWOOT_API_KEY: ${CHATWOOT_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "4000:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whatpro-api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
+      - "traefik.http.routers.whatpro-api.entrypoints=web"
+      - "traefik.http.services.whatpro-api.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.middlewares.security-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.security-headers.headers.browserxssfilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.routers.whatpro-api.middlewares=security-headers"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  whatpro_worker:
+    image: whatpro/hub-api:latest
+    command: ["./whatpro-worker"]
+    <<: *default-restart
+    networks:
+      - app
+    depends_on:
+      pgvector:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@pgvector:5432/${POSTGRES_DB:-whatpro_hub}?sslmode=disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CHATWOOT_URL: ${CHATWOOT_URL:-http://chatwoot_app:3000}
+      CHATWOOT_API_KEY: ${CHATWOOT_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  app:
+    name: hub_app
+    external: true
+  traefik:
+    name: traefik
+    external: true
+
+volumes:
+  pgvector_data:
+    name: hub_pgvector_data
+    driver: local
+  redis_data:
+    name: hub_redis_data
+    driver: local

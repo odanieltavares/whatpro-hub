@@ -1,0 +1,140 @@
+name: chatwoot
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  chatwoot_app:
+    image: chatwoot/chatwoot:v4.10.0
+    <<: *default-restart
+    command: >
+      sh -c "rm -f /app/lib/tasks/auto_annotate_models.rake && echo 'Rails.application.config.active_storage.variant_processor = :mini_magick' > /app/config/initializers/active_storage.rb && bundle exec rails db:chatwoot_prepare && bundle exec rails s -p 3000 -b 0.0.0.0"
+    entrypoint: docker/entrypoints/rails.sh
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+      - chatwoot_mailer:/app/app/views/devise/mailer
+      - chatwoot_mailers:/app/app/views/mailers
+    networks:
+      - app
+      - traefik
+    # depends_on removed because pgvector/redis are in a separate stack
+    environment:
+      INSTALLATION_NAME: whatpro
+      SECRET_KEY_BASE: ${CHATWOOT_SECRET_KEY_BASE}
+      FRONTEND_URL: ${CHATWOOT_FRONTEND_URL}
+      CHATWOOT_HUB_URL: ${CHATWOOT_FRONTEND_URL}/
+      FORCE_SSL: ${CHATWOOT_FORCE_SSL:-true}
+      DEFAULT_LOCALE: pt_BR
+      TZ: America/Sao_Paulo
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      POSTGRES_HOST: pgvector
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DATABASE: chatwoot
+      MAILER_SENDER_EMAIL: ${MAILER_SENDER_EMAIL}
+      SMTP_DOMAIN: ${SMTP_DOMAIN}
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SSL: ${SMTP_SSL}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION}
+      SMTP_ENABLE_STARTTLS_AUTO: ${SMTP_ENABLE_STARTTLS_AUTO}
+      SMTP_OPENSSL_VERIFY_MODE: ${SMTP_OPENSSL_VERIFY_MODE}
+      MAILER_INBOUND_EMAIL_DOMAIN: ${MAILER_INBOUND_EMAIL_DOMAIN}
+      ACTIVE_STORAGE_SERVICE: local
+      SIDEKIQ_CONCURRENCY: 10
+      RACK_TIMEOUT_SERVICE_TIMEOUT: 0
+      RAILS_MAX_THREADS: 5
+      WEB_CONCURRENCY: 2
+      ENABLE_RACK_ATTACK: ${CHATWOOT_ENABLE_RACK_ATTACK:-true}
+      NODE_ENV: ${CHATWOOT_ENV:-production}
+      RAILS_ENV: ${CHATWOOT_ENV:-production}
+      INSTALLATION_ENV: docker
+      RAILS_LOG_TO_STDOUT: "true"
+      USE_INBOX_AVATAR_FOR_BOT: "true"
+      ENABLE_ACCOUNT_SIGNUP: ${CHATWOOT_ENABLE_SIGNUP:-false}
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN}`)"
+        - "traefik.http.routers.chatwoot.entrypoints=websecure"
+        - "traefik.http.routers.chatwoot.tls.certresolver=le"
+        - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+        - "traefik.docker.network=traefik"
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  chatwoot_sidekiq:
+    image: chatwoot/chatwoot:v4.10.0
+    <<: *default-restart
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    volumes:
+      - chatwoot_storage:/app/storage
+      - chatwoot_public:/app/public
+      - chatwoot_mailer:/app/app/views/devise/mailer
+      - chatwoot_mailers:/app/app/views/mailers
+    networks:
+      - app
+    depends_on:
+      chatwoot_app:
+        condition: service_started
+    environment:
+      INSTALLATION_NAME: whatpro
+      SECRET_KEY_BASE: ${CHATWOOT_SECRET_KEY_BASE}
+      FRONTEND_URL: ${CHATWOOT_FRONTEND_URL}
+      FORCE_SSL: ${CHATWOOT_FORCE_SSL:-true}
+      DEFAULT_LOCALE: pt_BR
+      TZ: America/Sao_Paulo
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      POSTGRES_HOST: pgvector
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DATABASE: chatwoot
+      MAILER_SENDER_EMAIL: ${MAILER_SENDER_EMAIL}
+      SMTP_DOMAIN: ${SMTP_DOMAIN}
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SSL: ${SMTP_SSL}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION}
+      SMTP_ENABLE_STARTTLS_AUTO: ${SMTP_ENABLE_STARTTLS_AUTO}
+      SMTP_OPENSSL_VERIFY_MODE: ${SMTP_OPENSSL_VERIFY_MODE}
+      MAILER_INBOUND_EMAIL_DOMAIN: ${MAILER_INBOUND_EMAIL_DOMAIN}
+      ACTIVE_STORAGE_SERVICE: local
+      SIDEKIQ_CONCURRENCY: 10
+      RAILS_MAX_THREADS: 5
+      NODE_ENV: ${CHATWOOT_ENV:-production}
+      RAILS_ENV: ${CHATWOOT_ENV:-production}
+      INSTALLATION_ENV: docker
+      RAILS_LOG_TO_STDOUT: "true"
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  app:
+    name: hub_app
+    external: true
+  traefik:
+    name: traefik
+    external: true
+
+volumes:
+  chatwoot_storage:
+    name: chatwoot_storage
+  chatwoot_public:
+    name: chatwoot_public
+  chatwoot_mailer:
+    name: chatwoot_mailer
+  chatwoot_mailers:
+    name: chatwoot_mailers

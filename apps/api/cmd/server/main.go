@@ -19,6 +19,7 @@ import (
 	"whatpro-hub/internal/handlers"
 	"whatpro-hub/internal/middleware"
 	"whatpro-hub/internal/migrations"
+	"whatpro-hub/internal/seeds"
 
 	// Swagger
 	"github.com/gofiber/swagger"
@@ -139,6 +140,8 @@ func main() {
 		if err := migrations.RunMigrations(db); err != nil {
 			log.Fatalf("Failed to run migrations: %v", err)
 		}
+		// Seed Demo Data
+		seeds.SeedDemoData(db)
 	}
 
 	// Initialize handlers
@@ -255,6 +258,34 @@ func main() {
 	cards.Put("/:id", h.UpdateCard)
 	cards.Post("/:id/move", h.MoveCard)
 	cards.Delete("/:id", middleware.RequireRole("admin", "super_admin"), h.DeleteCard)
+
+	// =========================================================================
+	// Internal Chat Routes
+	// =========================================================================
+	chatHandler := handlers.NewChatHandler(h.ChatService)
+	chat := protected.Group("/accounts/:accountId/chat", middleware.RequireAccountAccess())
+	
+	// Rooms
+	chat.Get("/rooms", chatHandler.ListRooms)
+	chat.Post("/rooms", chatHandler.CreateRoom)
+	chat.Get("/rooms/:roomId", chatHandler.GetRoom)
+	
+	// Members
+	chat.Post("/rooms/:roomId/members", chatHandler.AddMember)
+	chat.Delete("/rooms/:roomId/members/:userId", chatHandler.RemoveMember)
+	
+	// Messages
+	chat.Get("/rooms/:roomId/messages", chatHandler.ListMessages)
+	chat.Post("/rooms/:roomId/messages", chatHandler.SendMessage)
+	chat.Delete("/messages/:messageId", chatHandler.DeleteMessage)
+	
+	// Read Status
+	chat.Post("/rooms/:roomId/read", chatHandler.MarkAsRead)
+	// Mentions
+	chat.Get("/mentions", chatHandler.ListMentions)
+	chat.Post("/mentions/:mentionId/read", chatHandler.MarkMentionRead)
+	// Quotes
+	chat.Post("/quotes", chatHandler.CreateQuote)
 
 	// Chatwoot Proxy (for frontend to call Chatwoot APIs through our API)
 	chatwoot := protected.Group("/chatwoot")

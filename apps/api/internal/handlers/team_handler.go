@@ -9,7 +9,36 @@ import (
 	"whatpro-hub/internal/repositories"
 )
 
+// CreateTeamRequest defines parameters for creating a team
+type CreateTeamRequest struct {
+	Name            string `json:"name" validate:"required"`
+	Description     string `json:"description"`
+	AllowAutoAssign *bool  `json:"allow_auto_assign"`
+}
+
+// UpdateTeamRequest defines parameters for updating a team
+type UpdateTeamRequest struct {
+	Name            *string `json:"name"`
+	Description     *string `json:"description"`
+	AllowAutoAssign *bool   `json:"allow_auto_assign"`
+}
+
+// AddTeamMemberRequest defines parameters for adding a team member
+type AddTeamMemberRequest struct {
+	UserID uint `json:"user_id" validate:"required"`
+}
+
 // ListTeams handles listing teams for an account
+// @Summary List teams
+// @Description Get a list of teams for a specific account
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/teams [get]
 func (h *Handler) ListTeams(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -32,13 +61,27 @@ func (h *Handler) ListTeams(c *fiber.Ctx) error {
 }
 
 // GetTeam handles fetching a single team
+// @Summary Get team details
+// @Description Get details of a specific team
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /teams/{id} [get]
 func (h *Handler) GetTeam(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
 	}
 
-	team, err := h.TeamService.GetTeam(c.Context(), uint(id))
+	team, err := h.TeamService.GetTeam(c.Context(), accountID, uint(id))
 	if err != nil {
 		if err == repositories.ErrTeamNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Team not found")
@@ -52,18 +95,24 @@ func (h *Handler) GetTeam(c *fiber.Ctx) error {
 }
 
 // CreateTeam handles creating a new team
+// @Summary Create team
+// @Description Create a new team in the account
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Param team body CreateTeamRequest true "Team Data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{} "Quota Exceeded"
+// @Router /accounts/{accountId}/teams [post]
 func (h *Handler) CreateTeam(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
 	}
 
-	var req struct {
-		Name            string `json:"name" validate:"required"`
-		Description     string `json:"description"`
-		AllowAutoAssign *bool  `json:"allow_auto_assign"`
-	}
-
+	var req CreateTeamRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid request body")
 	}
@@ -101,18 +150,28 @@ func (h *Handler) CreateTeam(c *fiber.Ctx) error {
 }
 
 // UpdateTeam handles updating a team
+// @Summary Update team
+// @Description Update team details
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Param team body UpdateTeamRequest true "Update Data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /teams/{id} [put]
 func (h *Handler) UpdateTeam(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
 	}
 
-	var req struct {
-		Name            *string `json:"name"`
-		Description     *string `json:"description"`
-		AllowAutoAssign *bool   `json:"allow_auto_assign"`
-	}
-
+	var req UpdateTeamRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid request body")
 	}
@@ -128,7 +187,7 @@ func (h *Handler) UpdateTeam(c *fiber.Ctx) error {
 		updates["allow_auto_assign"] = *req.AllowAutoAssign
 	}
 
-	if err := h.TeamService.UpdateTeam(c.Context(), uint(id), updates); err != nil {
+	if err := h.TeamService.UpdateTeam(c.Context(), accountID, uint(id), updates); err != nil {
 		if err == repositories.ErrTeamNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Team not found")
 		}
@@ -136,7 +195,7 @@ func (h *Handler) UpdateTeam(c *fiber.Ctx) error {
 	}
 
 	// Fetch updated team for response
-	team, _ := h.TeamService.GetTeam(c.Context(), uint(id))
+	team, _ := h.TeamService.GetTeam(c.Context(), accountID, uint(id))
 
 	h.AuditUpdate(c, "team", fmt.Sprintf("%d", id), nil, updates)
 
@@ -146,13 +205,27 @@ func (h *Handler) UpdateTeam(c *fiber.Ctx) error {
 }
 
 // DeleteTeam handles deleting a team
+// @Summary Delete team
+// @Description Remove a team from the account
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /teams/{id} [delete]
 func (h *Handler) DeleteTeam(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
 	}
 
-	if err := h.TeamService.DeleteTeam(c.Context(), uint(id)); err != nil {
+	if err := h.TeamService.DeleteTeam(c.Context(), accountID, uint(id)); err != nil {
 		if err == repositories.ErrTeamNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Team not found")
 		}
@@ -167,13 +240,26 @@ func (h *Handler) DeleteTeam(c *fiber.Ctx) error {
 }
 
 // ListTeamMembers lists users in a team
+// @Summary List team members
+// @Description Get users assigned to a team
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /teams/{id}/members [get]
 func (h *Handler) ListTeamMembers(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
 	}
 
-	members, err := h.TeamService.GetTeamMembers(c.Context(), uint(id))
+	members, err := h.TeamService.GetTeamMembers(c.Context(), accountID, uint(id))
 	if err != nil {
 		return h.Error(c, fiber.StatusInternalServerError, "Failed to fetch team members")
 	}
@@ -185,21 +271,32 @@ func (h *Handler) ListTeamMembers(c *fiber.Ctx) error {
 }
 
 // AddTeamMember adds a user to a team
+// @Summary Add team member
+// @Description Assign a user to a team
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Param member body AddTeamMemberRequest true "Member Data"
+// @Success 200 {object} map[string]interface{}
+// @Router /teams/{id}/members [post]
 func (h *Handler) AddTeamMember(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	teamID, err := c.ParamsInt("id")
 	if err != nil || teamID < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
 	}
 
-	var req struct {
-		UserID uint `json:"user_id" validate:"required"`
-	}
-
+	var req AddTeamMemberRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	if err := h.TeamService.AddTeamMember(c.Context(), uint(teamID), req.UserID); err != nil {
+	if err := h.TeamService.AddTeamMember(c.Context(), accountID, uint(teamID), req.UserID); err != nil {
 		return h.Error(c, fiber.StatusInternalServerError, "Failed to add team member")
 	}
 
@@ -211,7 +308,21 @@ func (h *Handler) AddTeamMember(c *fiber.Ctx) error {
 }
 
 // RemoveTeamMember removes a user from a team
+// @Summary Remove team member
+// @Description Unassign a user from a team
+// @Tags Teams
+// @Accept json
+// @Produce json
+// @Param id path int true "Team ID"
+// @Param userId path int true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /teams/{id}/members/{userId} [delete]
 func (h *Handler) RemoveTeamMember(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	teamID, err := c.ParamsInt("id")
 	if err != nil || teamID < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid team ID")
@@ -223,7 +334,7 @@ func (h *Handler) RemoveTeamMember(c *fiber.Ctx) error {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid user ID")
 	}
 
-	if err := h.TeamService.RemoveTeamMember(c.Context(), uint(teamID), uint(userID)); err != nil {
+	if err := h.TeamService.RemoveTeamMember(c.Context(), accountID, uint(teamID), uint(userID)); err != nil {
 		return h.Error(c, fiber.StatusInternalServerError, "Failed to remove team member")
 	}
 

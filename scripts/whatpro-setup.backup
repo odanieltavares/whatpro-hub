@@ -1,0 +1,2373 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR_DEFAULT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="${WHATPRO_SETUP_ROOT:-$ROOT_DIR_DEFAULT}"
+DOCKER_DIR="${WHATPRO_SETUP_DOCKER_DIR:-$ROOT_DIR/deploy/docker}"
+STACKS_JSON="${WHATPRO_SETUP_STACKS_JSON:-$DOCKER_DIR/stacks.json}"
+ENV_DIR="${WHATPRO_SETUP_ENV_DIR:-$DOCKER_DIR/envs}"
+
+color_yellow="\033[33m"
+color_green="\033[32m"
+color_red="\033[31m"
+color_reset="\033[0m"
+
+PREVIEW_PORT_DEFAULT=8099
+PREVIEW_PORT_ALT=8089
+PREVIEW_PORT_MIN=8100
+PREVIEW_PORT_MAX=8110
+
+detect_platform() {
+  local uname_s
+  uname_s=$(uname -s 2>/dev/null || echo "")
+  case "$uname_s" in
+    Darwin) echo "macos" ;;
+    Linux)
+      if grep -qi microsoft /proc/version 2>/dev/null; then
+        echo "wsl"
+      else
+        echo "linux"
+      fi
+      ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+PLATFORM="$(detect_platform)"
+
+print_title() {
+  clear || true
+  echo -e "${color_yellow} _       _           _                                 ${color_reset}"
+  echo -e "${color_yellow}| |     | |         | |                                ${color_reset}"
+  echo -e "${color_yellow}| | __ _| |_ ___  __| | ___  ___                       ${color_reset}"
+  echo -e "${color_yellow}| |/ _\` | __/ _ \\/ _\` |/ _ \\/ __|                      ${color_reset}"
+  echo -e "${color_yellow}| | (_| | ||  __/ (_| |  __/\\__ \\                      ${color_reset}"
+  echo -e "${color_yellow}|_|\\__,_|\\__\\___|\\__,_|\\___||___/                      ${color_reset}"
+  echo -e "${color_yellow}           WHATPRO SETUP                                ${color_reset}"
+  echo -e "${color_yellow}============================================================${color_reset}"
+}
+
+pause() {
+  read -rp "Pressione Enter para continuar..."
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo -e "${color_red}Missing required command: $cmd${color_reset}"
+    return 1
+  fi
+}
+
+ensure_env_dir() {
+  mkdir -p "$ENV_DIR"
+}
+
+print_platform_checklist() {
+  echo "Checklist da plataforma:"
+  case "$PLATFORM" in
+    macos)
+      echo "- Docker Desktop em execução"
+      echo "- File sharing habilitado para a pasta do projeto"
+      echo "- Portas 80, 443, 4000, 8080, 8081, 9000, 9443 livres"
+      ;;
+    wsl)
+      echo "- Docker Desktop em execução com WSL2"
+      echo "- Distribuição WSL habilitada no Docker"
+      echo "- Portas 80, 443, 4000, 8080, 8081, 9000, 9443 livres"
+      ;;
+    linux)
+      echo "- Docker daemon em execução (systemd/service)"
+      echo "- Usuário no grupo docker ou sudo disponível"
+      echo "- Portas 80, 443, 4000, 8080, 8081, 9000, 9443 livres"
+      ;;
+    *)
+      echo "- Plataforma desconhecida. Garanta Docker rodando e portas livres."
+      ;;
+  esac
+}
+
+preview_status() {
+  local pid_file="$DOCKER_DIR/templates/.preview.pid"
+  local port_file="$DOCKER_DIR/templates/.preview.port"
+  local port="$PREVIEW_PORT_DEFAULT"
+  local status="parado"
+  local pid=""
+  if [ -f "$port_file" ]; then
+    port=$(cat "$port_file")
+  fi
+  if [ -f "$pid_file" ]; then
+    pid=$(cat "$pid_file")
+    if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
+      if curl -fsS "http://localhost:${port}" >/dev/null 2>&1; then
+        status="rodando"
+      else
+        status="travado"
+      fi
+    fi
+  fi
+  echo "$status"
+}
+
+get_preview_port() {
+  local port_file="$DOCKER_DIR/templates/.preview.port"
+  if [ -f "$port_file" ]; then
+    cat "$port_file"
+  else
+    echo "$PREVIEW_PORT_DEFAULT"
+  fi
+}
+
+preview_type_counts() {
+  local defaults_dir="$DOCKER_DIR/templates/defaults"
+  if [ ! -d "$defaults_dir" ]; then
+    echo "(padrões ainda não sincronizados)"
+    return 0
+  fi
+  python3 - <<'PY' "$defaults_dir"
+import os, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+groups = {}
+for p in root.rglob("*"):
+    if not p.is_file():
+        continue
+    rel = p.relative_to(root)
+    key = rel.parts[0] if rel.parts else "unknown"
+    groups[key] = groups.get(key, 0) + 1
+if not groups:
+    print("(nenhum tipo encontrado)")
+else:
+    for k in sorted(groups):
+        print(f"{k}: {groups[k]}")
+PY
+}
+warn_path_mismatch() {
+  if [ "$PLATFORM" = "macos" ] || [ "$PLATFORM" = "linux" ]; then
+    if echo "$DOCKER_DIR" | grep -qiE '/mnt/|\\\\wsl\\.|wsl\\.localhost'; then
+      echo -e "${color_yellow}Warning: DOCKER_DIR looks like a WSL path on non-WSL platform.${color_reset}"
+      echo "Set WHATPRO_SETUP_DOCKER_DIR to a local path."
+    fi
+  fi
+}
+
+generate_preview_pages() {
+  local preview_dir="$DOCKER_DIR/templates/previews"
+  local active_file="$DOCKER_DIR/templates/ACTIVE_SET"
+  local sets_dir="$DOCKER_DIR/templates/sets"
+  local defaults_dir="$DOCKER_DIR/templates/defaults"
+  local index_file="$preview_dir/index.html"
+  local chatwoot_container
+  chatwoot_container=$(docker ps --format '{{.Names}}' | grep -E 'chatwoot.*app' | head -n 1 || true)
+
+  mkdir -p "$preview_dir"
+  rm -rf "$preview_dir"/*
+
+  local active_set="(none)"
+  if [ -f "$active_file" ]; then
+    active_set=$(cat "$active_file")
+  fi
+
+  if [ -n "$chatwoot_container" ]; then
+    rm -rf "$defaults_dir"
+    mkdir -p "$defaults_dir"
+    docker exec "$chatwoot_container" tar -C /app/app/views -cf - devise/mailer mailers 2>/dev/null | tar -C "$defaults_dir" -xf - 2>/dev/null || true
+  fi
+
+  PREVIEW_DIR="$preview_dir" ACTIVE_SET="$active_set" SETS_DIR="$sets_dir" DEFAULTS_DIR="$defaults_dir" INDEX_FILE="$index_file" python3 - <<'PY'
+import os
+from pathlib import Path
+import html
+from datetime import datetime
+
+previews_dir = Path(os.environ["PREVIEW_DIR"])
+sets_dir = Path(os.environ["SETS_DIR"])
+defaults_dir = Path(os.environ["DEFAULTS_DIR"])
+index_file = Path(os.environ["INDEX_FILE"])
+active_set = os.environ.get("ACTIVE_SET", "(none)")
+previews_dir.mkdir(parents=True, exist_ok=True)
+now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+def render_template(text: str) -> str:
+    text = text.replace("<%= @resource.email %>", "user@whatpro.com")
+    text = text.replace("<%= edit_password_url(@resource, reset_password_token: @token) %>", "https://example.com/reset")
+    text = text.replace("<%= confirmation_url(@resource, confirmation_token: @token) %>", "https://example.com/confirm")
+    text = text.replace("<%= unlock_url(@resource, unlock_token: @token) %>", "https://example.com/unlock")
+    import re
+    text = re.sub(r"<%=?[^%]*%>", "#", text)
+    return text
+
+def write_preview_file(out_path: Path, body_html: str) -> None:
+    out_path.write_text(f"<!doctype html><html><head><meta charset='utf-8'><title>{out_path.name}</title></head><body>{body_html}</body></html>")
+
+def load_templates(base_dir: Path, kind: str):
+    entries = []
+    if not base_dir.exists():
+        return entries
+    if kind == "mailer":
+        for src_path in sorted(base_dir.glob("*.erb")):
+            base = src_path.name.replace(".html.erb", "")
+            entries.append(("Devise Mailer", base, src_path))
+    else:
+        for src_path in sorted(base_dir.rglob("*")):
+            if not src_path.is_file():
+                continue
+            rel = src_path.relative_to(base_dir)
+            base = str(rel).replace("/", "_")
+            if src_path.suffix == ".liquid":
+                entries.append(("Mailers Liquid", base, src_path))
+            elif src_path.suffix == ".erb":
+                entries.append(("Mailers ERB", base, src_path))
+            else:
+                entries.append(("Mailers Outros", base, src_path))
+    return entries
+
+for set_dir in sets_dir.iterdir() if sets_dir.exists() else []:
+    if not set_dir.is_dir():
+        continue
+    name = set_dir.name
+    out_dir = previews_dir / name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    mailer = set_dir / "chatwoot_mailer"
+    mailers = set_dir / "chatwoot_mailers"
+    rendered = []
+    for group, base, src_path in load_templates(mailer, "mailer"):
+        out_name = f"{base}.html"
+        html_out = render_template(src_path.read_text(errors="ignore"))
+        (out_dir / out_name).write_text(html_out)
+        rendered.append((group, base, out_name))
+    for group, base, src_path in load_templates(mailers, "mailers"):
+        out_name = f"{base}.html"
+        raw = src_path.read_text(errors="ignore")
+        if src_path.suffix == ".erb":
+            html_out = render_template(raw)
+        else:
+            html_out = "<pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>" + html.escape(raw) + "</pre>"
+        write_preview_file(out_dir / out_name, html_out)
+        rendered.append((group, base, out_name))
+    items_html = ""
+    if rendered:
+        groups = {}
+        for group, base, out_name in rendered:
+            groups.setdefault(group, []).append((base, out_name))
+        for group, items in groups.items():
+            items_html += f"<h3 style='margin:16px 0 8px'>{group}</h3>"
+            items_html += "<div class='grid'>"
+            for base, out_name in items:
+                label = base.replace("_", " ")
+                items_html += f"<div><div style='font-weight:600;margin-bottom:6px;'>{label}</div><iframe src='/{name}/{out_name}'></iframe></div>"
+            items_html += "</div>"
+    else:
+        items_html = "<p>Nenhum template encontrado neste set.</p>"
+    (out_dir / "index.html").write_text(f"""<!doctype html>
+<html><head><meta charset="utf-8" />
+<title>Preview - {name}</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<style>
+body{{font-family:Arial,Helvetica,sans-serif;background:#f8fafc;margin:0;padding:24px;color:#0f172a}}
+.top{{display:flex;align-items:center;gap:12px;margin-bottom:16px}}
+.btn{{display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:600}}
+.grid{{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}}
+iframe{{width:100%;height:260px;border:1px solid #e2e8f0;border-radius:8px}}
+.card{{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px}}
+</style></head><body>
+<div class="top"><a class="btn" href="/">Voltar</a><h1 style="margin:0">Set: {name}</h1></div>
+<div class="card">{items_html}</div>
+<div style="margin-top:12px;color:#64748b;font-size:12px">Atualizado em {now}</div>
+</body></html>""")
+
+defaults_out = previews_dir / "defaults"
+defaults_out.mkdir(parents=True, exist_ok=True)
+default_entries = []
+if defaults_dir.exists():
+    for src in sorted(defaults_dir.rglob("*")):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(defaults_dir)
+        name = str(rel).replace("/", "_")
+        out_name = f"{name}.html"
+        raw = src.read_text(errors="ignore")
+        if src.suffix == ".erb":
+            body = render_template(raw)
+        else:
+            body = "<pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>" + html.escape(raw) + "</pre>"
+        (defaults_out / out_name).write_text(f"<!doctype html><html><head><meta charset='utf-8'><title>{rel}</title></head><body>{body}</body></html>")
+        default_entries.append((str(rel), out_name))
+
+defaults_index = "<p>Nenhum template padrão encontrado (container do Chatwoot não disponível).</p>"
+types_html = "<p>Nenhum tipo encontrado.</p>"
+if default_entries:
+    items = "".join([f"<div><div style='font-weight:600;margin-bottom:6px;'>{name}</div><iframe src='/defaults/{out}'></iframe></div>" for name, out in default_entries])
+    defaults_index = f"<div class='grid'>{items}</div>"
+    groups = {}
+    for name, _ in default_entries:
+        key = name.split("/", 1)[0]
+        groups.setdefault(key, 0)
+        groups[key] += 1
+    types_html = "<ul style='margin:8px 0 0 18px'>"
+    for key, count in sorted(groups.items()):
+        types_html += f"<li>{key}: {count}</li>"
+    types_html += "</ul>"
+(defaults_out / "index.html").write_text(f"""<!doctype html>
+<html><head><meta charset="utf-8" />
+<title>Padrões Chatwoot</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<style>
+body{{font-family:Arial,Helvetica,sans-serif;background:#f8fafc;margin:0;padding:24px;color:#0f172a}}
+.top{{display:flex;align-items:center;gap:12px;margin-bottom:16px}}
+.btn{{display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:600}}
+.grid{{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}}
+iframe{{width:100%;height:260px;border:1px solid #e2e8f0;border-radius:8px}}
+.card{{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px}}
+</style></head><body>
+<div class="top"><a class="btn" href="/">Voltar</a><h1 style="margin:0">Padrões do Chatwoot (container)</h1></div>
+<div class="card">{defaults_index}</div>
+<div style="margin-top:12px;color:#64748b;font-size:12px">Atualizado em {now}</div>
+</body></html>""")
+
+index_file.write_text(f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>Chatwoot Email Preview</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<style>
+body{{font-family:Arial,Helvetica,sans-serif;background:#f4f6fb;margin:0;color:#0f172a}}
+.wrap{{display:grid;grid-template-columns:260px 1fr;min-height:100vh}}
+.side{{background:#0b1220;color:#e2e8f0;padding:20px}}
+.side h2{{margin:0 0 12px 0;font-size:18px}}
+.pill{{display:inline-block;background:#1e293b;color:#cbd5f5;border-radius:999px;padding:4px 10px;font-size:12px;margin-top:8px}}
+.content{{padding:28px}}
+.card{{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 14px rgba(2,8,23,.04)}}
+a{{color:#2563eb;text-decoration:none}}
+.grid{{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}}
+.set{{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px}}
+.top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}}
+.tag{{display:inline-block;background:#0f172a;color:#fff;padding:3px 8px;border-radius:8px;font-size:12px}}
+</style></head><body>
+<div class="wrap">
+  <aside class="side">
+    <h2>Whatpro Preview</h2>
+    <div>Chatwoot Email Templates</div>
+    <div class="pill">Set ativo: {active_set}</div>
+    <div style="margin-top:16px;font-size:12px;color:#94a3b8">Atualizado em {now}</div>
+    <div style="margin-top:18px;font-size:12px;color:#94a3b8">Dica: clique em um set para ver todos os tipos.</div>
+  </aside>
+  <main class="content">
+    <div class="top">
+      <h1 style="margin:0">Chatwoot Email Preview</h1>
+      <span class="tag">Live</span>
+    </div>
+    <div class="card"><strong>Sets disponíveis</strong>
+      <div class="grid" style="margin-top:10px">
+        {''.join([f"<div class='set'><a href='/{d.name}/'>{d.name}</a></div>" for d in previews_dir.iterdir() if d.is_dir()])}
+      </div>
+    </div>
+    <div class="card"><strong>Tipos disponíveis (padrões do Chatwoot)</strong>{types_html}</div>
+    <div class="card"><strong>Pré-visualizações</strong>
+      <p>Templates padrão do Chatwoot: <a href="/defaults/">/defaults/</a></p>
+    </div>
+  </main>
+</div>
+</body></html>""")
+PY
+}
+
+check_requirements() {
+  echo "Verificando requisitos..."
+  require_cmd docker
+  require_cmd awk
+  require_cmd sed
+  if [ "$PLATFORM" = "macos" ]; then
+    require_cmd lsof || true
+  else
+    require_cmd ss || true
+  fi
+  if ! command -v docker compose >/dev/null 2>&1; then
+    echo -e "${color_red}docker compose indisponível${color_reset}"
+    return 1
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo -e "${color_red}Docker engine não está rodando${color_reset}"
+    if [ "$PLATFORM" = "macos" ]; then
+      echo "Inicie o Docker Desktop e tente novamente."
+    elif [ "$PLATFORM" = "wsl" ]; then
+      echo "Inicie o Docker Desktop (WSL2) e tente novamente."
+    else
+      echo "Inicie o Docker daemon e tente novamente."
+    fi
+    return 1
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo -e "${color_red}python3 indisponível (necessário para ler stacks.json)${color_reset}"
+    return 1
+  fi
+  if [ ! -f "$STACKS_JSON" ]; then
+    echo -e "${color_red}stacks.json não encontrado em: $STACKS_JSON${color_reset}"
+    echo "Defina WHATPRO_SETUP_STACKS_JSON ou WHATPRO_SETUP_DOCKER_DIR."
+    return 1
+  fi
+  warn_path_mismatch
+  echo -e "${color_green}OK${color_reset}"
+}
+
+check_resources() {
+  local min_mem_gb=4
+  local min_cpu=2
+  local mem_gb
+  local cpu
+  mem_gb=$(awk '/MemTotal/ {printf "%.0f", $2/1024/1024}' /proc/meminfo)
+  cpu=$(nproc)
+  echo "Memory: ${mem_gb}GB, CPU: ${cpu} cores"
+  if [ "$mem_gb" -lt "$min_mem_gb" ] || [ "$cpu" -lt "$min_cpu" ]; then
+    echo -e "${color_red}Warning: recommended >= ${min_mem_gb}GB RAM and ${min_cpu} CPU cores${color_reset}"
+  else
+    echo -e "${color_green}Resources OK${color_reset}"
+  fi
+}
+
+check_ports() {
+  local ports=("$@")
+  if [ "$PLATFORM" = "macos" ]; then
+    if ! command -v lsof >/dev/null 2>&1; then
+      echo -e "${color_red}lsof not available, skipping port checks${color_reset}"
+      return 0
+    fi
+  else
+    if ! command -v ss >/dev/null 2>&1; then
+      echo -e "${color_red}ss not available, skipping port checks${color_reset}"
+      return 0
+    fi
+  fi
+  echo "Checking ports: ${ports[*]}"
+  local in_use=0
+  for p in "${ports[@]}"; do
+    if [ "$PLATFORM" = "macos" ]; then
+      if lsof -n -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1; then
+        echo -e "${color_red}Port $p is in use${color_reset}"
+        in_use=1
+      fi
+      continue
+    fi
+    if ss -ltn "( sport = :$p )" | grep -q ":$p"; then
+      echo -e "${color_red}Port $p is in use${color_reset}"
+      in_use=1
+    fi
+  done
+  if [ "$in_use" -eq 0 ]; then
+    echo -e "${color_green}Ports OK${color_reset}"
+  fi
+}
+
+is_port_in_use() {
+  local p="$1"
+  if [ "$PLATFORM" = "macos" ]; then
+    if command -v lsof >/dev/null 2>&1; then
+      lsof -n -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
+      return $?
+    fi
+    return 1
+  fi
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "( sport = :$p )" | grep -q ":$p"
+    return $?
+  fi
+  return 1
+}
+
+find_free_port() {
+  local start="${1:-8099}"
+  local end="${2:-8110}"
+  local p
+  for p in $(seq "$start" "$end"); do
+    if ! is_port_in_use "$p"; then
+      echo "$p"
+      return 0
+    fi
+  done
+  return 1
+}
+
+load_env() {
+  local env_file="$1"
+  if [ -f "$env_file" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$env_file"
+    set +a
+  fi
+}
+
+env_file_for_stack() {
+  local env_mode="$1"
+  local name="$2"
+  echo "$ENV_DIR/${name}.${env_mode}.env"
+}
+
+merge_env_files() {
+  local base_file="$1"
+  local override_file="$2"
+  local out_file="$3"
+  python3 - <<PY
+import os
+
+def parse_env(path):
+    data = {}
+    if not os.path.exists(path):
+        return data
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            data[k] = v
+    return data
+
+base = parse_env("${base_file}")
+override = parse_env("${override_file}")
+merged = {**base, **override}
+with open("${out_file}", "w") as f:
+    for k in sorted(merged.keys()):
+        f.write(f"{k}={merged[k]}\n")
+PY
+}
+
+prompt_mode() {
+  local mode
+  read -rp "Modo (dev/prod ou 0 para voltar): " mode
+  if [ "$mode" = "0" ] || [ -z "$mode" ]; then
+    echo ""
+    return 1
+  fi
+  if [ "$mode" != "dev" ] && [ "$mode" != "prod" ]; then
+    echo -e "${color_red}Modo inválido${color_reset}"
+    return 1
+  fi
+  echo "$mode"
+}
+
+edit_env_file() {
+  local file="$1"
+  local editor="${EDITOR:-nano}"
+  echo "Editing: $file"
+  $editor "$file"
+}
+
+get_public_ip() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS ifconfig.me 2>/dev/null || curl -fsS https://api.ipify.org 2>/dev/null || true
+  fi
+}
+
+resolve_domain() {
+  local domain="$1"
+  if command -v dig >/dev/null 2>&1; then
+    dig +short "$domain" | head -n 1
+  elif command -v getent >/dev/null 2>&1; then
+    getent hosts "$domain" | awk '{print $1}' | head -n 1
+  fi
+}
+
+validate_dns_prod() {
+  local env_file="$1"
+  load_env "$env_file"
+  echo "Validating DNS..."
+  local public_ip
+  public_ip=$(get_public_ip)
+  if [ -z "$public_ip" ]; then
+    echo -e "${color_red}Unable to detect public IP. Skipping DNS validation.${color_reset}"
+    return 0
+  fi
+
+  local domains=("$CHATWOOT_DOMAIN" "$API_DOMAIN" "$PORTAINER_DOMAIN" "$TRAEFIK_DOMAIN")
+  local failed=0
+  for d in "${domains[@]}"; do
+    [ -z "$d" ] && continue
+    local resolved
+    resolved=$(resolve_domain "$d")
+    if [ -z "$resolved" ]; then
+      echo -e "${color_red}DNS not resolved: $d${color_reset}"
+      failed=1
+      continue
+    fi
+    if [ "$resolved" != "$public_ip" ]; then
+      echo -e "${color_red}DNS mismatch: $d -> $resolved (expected $public_ip)${color_reset}"
+      failed=1
+    else
+      echo -e "${color_green}DNS OK: $d -> $resolved${color_reset}"
+    fi
+  done
+  if [ "$failed" -eq 1 ]; then
+    echo -e "${color_red}DNS validation failed. Fix DNS before continuing.${color_reset}"
+    return 1
+  fi
+}
+
+validate_db_dev() {
+  echo "Validating database (dev)..."
+  local cid
+  cid=$(docker ps --filter "name=pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector container not found${color_reset}"
+    return 1
+  fi
+  if docker exec "$cid" pg_isready -U postgres >/dev/null 2>&1; then
+    echo -e "${color_green}Postgres OK${color_reset}"
+  else
+    echo -e "${color_red}Postgres FAIL${color_reset}"
+    return 1
+  fi
+}
+
+validate_db_prod() {
+  echo "Validating database (prod)..."
+  local cid
+  cid=$(docker ps --filter "label=com.docker.swarm.service.name=whatpro-hub_pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector task not found${color_reset}"
+    return 1
+  fi
+  if docker exec "$cid" pg_isready -U postgres >/dev/null 2>&1; then
+    echo -e "${color_green}Postgres OK${color_reset}"
+  else
+    echo -e "${color_red}Postgres FAIL${color_reset}"
+    return 1
+  fi
+}
+
+ensure_network() {
+  local name="$1"
+  local driver="$2"
+  local internal="${3:-false}"
+  if docker network inspect "$name" >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ "$internal" = "true" ]; then
+    docker network create --driver "$driver" --internal "$name" >/dev/null
+  else
+    docker network create --driver "$driver" "$name" >/dev/null
+  fi
+}
+
+ensure_volume() {
+  local name="$1"
+  if ! docker volume inspect "$name" >/dev/null 2>&1; then
+    docker volume create "$name" >/dev/null
+  fi
+}
+
+ensure_networks_dev() {
+  ensure_network "traefik" "bridge" "false"
+  ensure_network "hub_app" "bridge" "true"
+  ensure_volume "traefik_certs"
+  ensure_volume "portainer_data"
+}
+
+ensure_networks_prod() {
+  ensure_network "traefik" "overlay" "false"
+  ensure_network "hub_app" "overlay" "true"
+  ensure_network "portainer_agent" "overlay" "false"
+}
+
+deploy_via_portainer() {
+  local env_mode="$1"
+  local base_env_file="$2"
+  require_cmd curl
+
+  read -rp "Portainer URL (ex: http://localhost:9000): " PORTAINER_URL
+  read -rp "Portainer API Key (leave empty to auto-create): " PORTAINER_API_KEY
+  if [ -n "$PORTAINER_URL" ] && [ -n "$PORTAINER_API_KEY" ]; then
+    echo "Available Portainer endpoints:"
+    curl -fsS -H "X-API-Key: ${PORTAINER_API_KEY}" \
+      "${PORTAINER_URL}/api/endpoints" | \
+      python3 - <<'PY'
+import json,sys
+try:
+    data=json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for e in data:
+    print(f"- ID {e.get('Id')} | {e.get('Name')} | {e.get('URL')}")
+PY
+  fi
+  read -rp "Portainer Endpoint ID (ex: 1): " PORTAINER_ENDPOINT_ID
+
+  if [ -z "$PORTAINER_URL" ] || [ -z "$PORTAINER_ENDPOINT_ID" ]; then
+    echo -e "${color_red}Portainer URL and Endpoint ID are required${color_reset}"
+    return 1
+  fi
+
+  if [ -z "$PORTAINER_API_KEY" ]; then
+    echo "Auto-create Portainer API key"
+    read -rp "Admin username [admin]: " PT_ADMIN_USER
+    read -rsp "Admin password (will not echo): " PT_ADMIN_PASS
+    echo ""
+    read -rp "Token description [whatpro-setup]: " PT_TOKEN_DESC
+    PT_ADMIN_USER=${PT_ADMIN_USER:-admin}
+    PT_TOKEN_DESC=${PT_TOKEN_DESC:-whatpro-setup}
+
+    if [ -z "$PT_ADMIN_PASS" ]; then
+      echo -e "${color_red}Admin password required to create API key${color_reset}"
+      return 1
+    fi
+
+    PT_JWT=$(curl -fsS -X POST "${PORTAINER_URL}/api/auth" \
+      -H "Content-Type: application/json" \
+      -d "{\"Username\":\"${PT_ADMIN_USER}\",\"Password\":\"${PT_ADMIN_PASS}\"}" | \
+      python3 - <<'PY'
+import json,sys
+try:
+    print(json.load(sys.stdin).get("jwt",""))
+except Exception:
+    print("")
+PY
+    )
+
+    if [ -z "$PT_JWT" ]; then
+      echo -e "${color_red}Failed to authenticate to Portainer API${color_reset}"
+      return 1
+    fi
+
+    PT_USER_ID=$(curl -fsS -H "Authorization: Bearer ${PT_JWT}" "${PORTAINER_URL}/api/users/me" | \
+      python3 - <<'PY'
+import json,sys
+try:
+    print(json.load(sys.stdin).get("Id",""))
+except Exception:
+    print("")
+PY
+    )
+
+    if [ -z "$PT_USER_ID" ]; then
+      PT_USER_ID=$(curl -fsS -H "Authorization: Bearer ${PT_JWT}" "${PORTAINER_URL}/api/users" | \
+        python3 - <<'PY'
+import json,sys
+try:
+    data=json.load(sys.stdin)
+except Exception:
+    data=[]
+for u in data:
+    if u.get("Username") == "admin":
+        print(u.get("Id",""))
+        break
+PY
+      )
+    fi
+
+    if [ -z "$PT_USER_ID" ]; then
+      echo -e "${color_red}Failed to resolve Portainer user ID${color_reset}"
+      return 1
+    fi
+
+    PT_TOKEN_JSON=$(curl -fsS -X POST \
+      -H "Authorization: Bearer ${PT_JWT}" \
+      -H "Content-Type: application/json" \
+      "${PORTAINER_URL}/api/users/${PT_USER_ID}/tokens" \
+      -d "{\"Description\":\"${PT_TOKEN_DESC}\",\"Password\":\"${PT_ADMIN_PASS}\"}")
+
+    PT_TOKEN=$(python3 - <<'PY'
+import json,sys
+try:
+    data=json.loads(sys.stdin.read())
+except Exception:
+    data={}
+print(data.get("token") or data.get("apiKey") or data.get("rawAPIKey") or "")
+PY
+<<<"$PT_TOKEN_JSON")
+
+    if [ -z "$PT_TOKEN" ]; then
+      echo -e "${color_yellow}API token created but value not parsed. Raw response:${color_reset}"
+      echo "$PT_TOKEN_JSON"
+      echo "Please copy the token manually and rerun."
+      return 1
+    fi
+
+    PORTAINER_API_KEY="$PT_TOKEN"
+    echo -e "${color_green}Portainer API key created.${color_reset}"
+  fi
+
+  if [ -z "$PORTAINER_API_KEY" ]; then
+    echo -e "${color_red}Portainer URL, API Key, and Endpoint ID are required${color_reset}"
+    return 1
+  fi
+
+  local endpoint_url
+  if [ "$env_mode" = "prod" ]; then
+    endpoint_url="${PORTAINER_URL}/api/stacks/create/swarm/string?endpointId=${PORTAINER_ENDPOINT_ID}"
+  else
+    endpoint_url="${PORTAINER_URL}/api/stacks/create/standalone/string?endpointId=${PORTAINER_ENDPOINT_ID}"
+  fi
+
+  local entry
+  for entry in $(load_stacks "$env_mode"); do
+    local name="${entry%%|*}"
+    local file="${entry##*|}"
+    local file_path="$DOCKER_DIR/$file"
+    local stack_env_file
+    local merged_env_file
+    stack_env_file=$(env_file_for_stack "$env_mode" "$name")
+    merged_env_file="/tmp/whatpro-env-${env_mode}-${name}.env"
+    merge_env_files "$base_env_file" "$stack_env_file" "$merged_env_file"
+    if [ "$env_mode" = "dev" ] && [ "$name" = "portainer" ]; then
+      echo "Skipping portainer stack (Portainer is already running for API access)"
+      continue
+    fi
+    echo "Deploying via Portainer: $name -> $file"
+    python3 - <<PY > /tmp/portainer_payload.json
+import json
+def parse_env(path):
+    items = []
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            items.append({"name": k, "value": v})
+    return items
+
+with open("${file_path}", "r") as f:
+    content = f.read()
+
+payload = {
+    "Name": "${name}",
+    "StackFileContent": content,
+    "Env": parse_env("${merged_env_file}"),
+    "FromAppTemplate": False,
+}
+print(json.dumps(payload))
+PY
+
+    local attempt=1
+    local max_attempts=3
+    until curl -fsS -X POST \
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: ${PORTAINER_API_KEY}" \
+      "${endpoint_url}" \
+      --data-binary @/tmp/portainer_payload.json >/dev/null; do
+      if [ "$attempt" -ge "$max_attempts" ]; then
+        echo -e "${color_red}Failed to deploy stack $name after ${max_attempts} attempts${color_reset}"
+        break
+      fi
+      attempt=$((attempt+1))
+      echo -e "${color_yellow}Retrying deploy for $name (${attempt}/${max_attempts})...${color_reset}"
+      sleep 3
+    done
+  done
+}
+
+deploy_with_retry() {
+  local desc="$1"
+  local cmd="$2"
+  local attempt=1
+  local max_attempts=3
+  until bash -lc "$cmd"; do
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo -e "${color_red}Failed: ${desc}${color_reset}"
+      return 1
+    fi
+    attempt=$((attempt+1))
+    echo -e "${color_yellow}Retrying: ${desc} (${attempt}/${max_attempts})...${color_reset}"
+    sleep 3
+  done
+}
+
+ensure_swarm() {
+  local state
+  state=$(docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null || true)
+  if [ "$state" != "active" ]; then
+    echo -e "${color_yellow}Docker Swarm not active${color_reset}"
+    read -rp "Initialize swarm now? (y/N): " ans
+    if [[ "$ans" =~ ^[Yy]$ ]]; then
+      docker swarm init
+    else
+      echo -e "${color_red}Swarm required for production${color_reset}"
+      return 1
+    fi
+  fi
+}
+
+random_hex() {
+  local bytes="$1"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex "$bytes"
+  else
+    python3 - <<PY
+import secrets
+print(secrets.token_hex($bytes))
+PY
+  fi
+}
+
+gen_traefik_hash() {
+  local password="$1"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl passwd -apr1 "$password"
+  else
+    echo "\$apr1\$H6uskkkW\$IgXLP6ewTrSuBkTrqE8wj/"
+  fi
+}
+
+write_env() {
+  local target="$1"
+  local env_mode="$2"
+
+  local postgres_password
+  local redis_password
+  local jwt_secret
+  local encryption_key
+  local chatwoot_secret
+  local traefik_pass
+  local traefik_hash
+
+  postgres_password=$(random_hex 16)
+  redis_password=$(random_hex 16)
+  jwt_secret=$(random_hex 32)
+  encryption_key=$(random_hex 16)
+  chatwoot_secret=$(random_hex 32)
+  traefik_pass=$(random_hex 8)
+  traefik_hash=$(gen_traefik_hash "$traefik_pass")
+  local traefik_auth_user
+  if [ "$env_mode" = "prod" ]; then
+    traefik_auth_user="admin:${traefik_hash}"
+  else
+    traefik_auth_user="admin:admin"
+  fi
+
+  local chat_domain
+  local api_domain
+  local portainer_domain
+  local traefik_domain
+  local acme_email
+
+  if [ "$env_mode" = "prod" ]; then
+    read -rp "Chatwoot domain (ex: chat.example.com): " chat_domain
+    read -rp "API domain (ex: api.example.com): " api_domain
+    read -rp "Portainer domain (ex: portainer.example.com): " portainer_domain
+    read -rp "Traefik domain (ex: traefik.example.com): " traefik_domain
+    read -rp "ACME email (Let's Encrypt): " acme_email
+  else
+    chat_domain="chat.localhost"
+    api_domain="api.localhost"
+    portainer_domain="portainer.localhost"
+    traefik_domain="traefik.localhost"
+    acme_email=""
+  fi
+
+  read -rp "SMTP sender email (optional): " mailer_sender
+  read -rp "SMTP domain (optional): " smtp_domain
+  read -rp "SMTP address (optional): " smtp_address
+  read -rp "SMTP port [587]: " smtp_port
+  read -rp "SMTP SSL [false]: " smtp_ssl
+  read -rp "SMTP username (optional): " smtp_user
+  read -rp "SMTP password (optional): " smtp_pass
+  read -rp "SMTP auth [login]: " smtp_auth
+  read -rp "SMTP starttls [true]: " smtp_starttls
+  read -rp "SMTP verify mode [peer]: " smtp_verify
+  read -rp "Inbound email domain (optional): " inbound_domain
+
+  smtp_port=${smtp_port:-587}
+  smtp_ssl=${smtp_ssl:-false}
+  smtp_auth=${smtp_auth:-login}
+  smtp_starttls=${smtp_starttls:-true}
+  smtp_verify=${smtp_verify:-peer}
+
+  local chat_frontend
+  if [ "$env_mode" = "prod" ]; then
+    chat_frontend="https://${chat_domain}"
+  else
+    chat_frontend="http://localhost:8080"
+  fi
+
+  cat > "$target" <<EOF
+APP_ENV=production
+POSTGRES_PASSWORD=${postgres_password}
+POSTGRES_DB=whatpro_hub
+PGSSLMODE=disable
+REDIS_PASSWORD=${redis_password}
+JWT_SECRET=${jwt_secret}
+ENCRYPTION_KEY=${encryption_key}
+CORS_ORIGINS=${chat_frontend},https://${api_domain}
+CHATWOOT_SECRET_KEY_BASE=${chatwoot_secret}
+CHATWOOT_FRONTEND_URL=${chat_frontend}
+CHATWOOT_DOMAIN=${chat_domain}
+CHATWOOT_ENV=production
+CHATWOOT_ENABLE_SIGNUP=false
+CHATWOOT_ENABLE_RACK_ATTACK=true
+CHATWOOT_FORCE_SSL=$( [ "$env_mode" = "prod" ] && echo true || echo false )
+CHATWOOT_API_KEY=__SET_AFTER_CHATWOOT_BOOT__
+CHATWOOT_URL=http://chatwoot_app:3000
+API_DOMAIN=${api_domain}
+TRAEFIK_DOMAIN=${traefik_domain}
+TRAEFIK_ACME_EMAIL=${acme_email}
+TRAEFIK_AUTH_USER=${traefik_auth_user}
+TRAEFIK_LOG_LEVEL=INFO
+PORTAINER_DOMAIN=${portainer_domain}
+PORTAINER_HTTP_PORT=9000
+PORTAINER_HTTPS_PORT=9443
+MAILER_SENDER_EMAIL=${mailer_sender}
+SMTP_DOMAIN=${smtp_domain}
+SMTP_ADDRESS=${smtp_address}
+SMTP_PORT=${smtp_port}
+SMTP_SSL=${smtp_ssl}
+SMTP_USERNAME=${smtp_user}
+SMTP_PASSWORD=${smtp_pass}
+SMTP_AUTHENTICATION=${smtp_auth}
+SMTP_ENABLE_STARTTLS_AUTO=${smtp_starttls}
+SMTP_OPENSSL_VERIFY_MODE=${smtp_verify}
+MAILER_INBOUND_EMAIL_DOMAIN=${inbound_domain}
+EVOLUTION_API_URL=
+EVOLUTION_API_KEY=
+UAZAPI_URL=
+UAZAPI_TOKEN=
+EOF
+
+  chmod 600 "$target"
+  printf "TRAEFIK_BASIC_AUTH_PASSWORD=%s\n" "$traefik_pass" > "${target}.traefik.secret"
+  chmod 600 "${target}.traefik.secret"
+}
+
+load_stacks() {
+  local env_mode="$1"
+  python3 - <<PY
+import json, sys
+with open("${STACKS_JSON}", "r") as f:
+    data = json.load(f)
+for s in data.get("${env_mode}", []):
+    print(f"{s['name']}|{s['file']}")
+PY
+}
+
+init_stack_envs() {
+  local env_mode="$1"
+  ensure_env_dir
+  for entry in $(load_stacks "$env_mode"); do
+    local name="${entry%%|*}"
+    local file
+    file=$(env_file_for_stack "$env_mode" "$name")
+    if [ ! -f "$file" ]; then
+      cat > "$file" <<EOF
+# Overrides for ${name} (${env_mode})
+# Example:
+# SOME_VAR=custom
+EOF
+      chmod 600 "$file"
+    fi
+  done
+}
+
+deploy_dev() {
+  local env_file="$DOCKER_DIR/.env.dev"
+  echo "Generating $env_file"
+  write_env "$env_file" "dev"
+  init_stack_envs "dev"
+  ensure_networks_dev
+  check_ports 4000 8080 8081 9000
+  local skip_portainer="false"
+  if command -v ss >/dev/null 2>&1; then
+    if ss -ltn "( sport = :9000 )" | grep -q ":9000"; then
+      skip_portainer="true"
+    fi
+  fi
+  read -rp "Deploy via Portainer API? (y/N): " use_portainer
+  if [[ "$use_portainer" =~ ^[Yy]$ ]]; then
+    deploy_via_portainer "dev" "$env_file"
+  else
+    for entry in $(load_stacks dev); do
+      local name="${entry%%|*}"
+      local file="${entry##*|}"
+      local stack_env_file
+      local merged_env_file
+      stack_env_file=$(env_file_for_stack "dev" "$name")
+      merged_env_file="/tmp/whatpro-env-dev-${name}.env"
+      merge_env_files "$env_file" "$stack_env_file" "$merged_env_file"
+      if [ "$name" = "portainer" ] && [ "$skip_portainer" = "true" ]; then
+        echo "Skipping portainer stack (port 9000 already in use)"
+        continue
+      fi
+      echo "Deploying (compose) $name -> $file"
+      deploy_with_retry "compose $name" "cd \"$DOCKER_DIR\" && docker compose -f \"$file\" --env-file \"$merged_env_file\" up -d"
+    done
+  fi
+  post_deploy_chatwoot_actions "dev"
+  validate_dev
+}
+
+deploy_prod() {
+  local env_file="$DOCKER_DIR/.env.prod"
+  echo "Generating $env_file"
+  write_env "$env_file" "prod"
+  init_stack_envs "prod"
+  ensure_swarm
+  ensure_networks_prod
+  validate_dns_prod "$env_file"
+  check_ports 80 443 8081 9000
+  read -rp "Deploy via Portainer API? (y/N): " use_portainer
+  if [[ "$use_portainer" =~ ^[Yy]$ ]]; then
+    deploy_via_portainer "prod" "$env_file"
+  else
+    for entry in $(load_stacks prod); do
+      local name="${entry%%|*}"
+      local file="${entry##*|}"
+      local stack_env_file
+      local merged_env_file
+      stack_env_file=$(env_file_for_stack "prod" "$name")
+      merged_env_file="/tmp/whatpro-env-prod-${name}.env"
+      merge_env_files "$env_file" "$stack_env_file" "$merged_env_file"
+      echo "Deploying (swarm) $name -> $file"
+      deploy_with_retry "swarm $name" "cd \"$DOCKER_DIR\" && set -a && source \"$merged_env_file\" && set +a && docker stack deploy -c \"$file\" \"$name\""
+    done
+  fi
+  post_deploy_chatwoot_actions "prod"
+  validate_prod
+}
+
+validate_dev() {
+  echo "Validating dev stacks..."
+  docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+  validate_db_dev || true
+  echo "Health checks (dev)..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS http://localhost:4000/health/live >/dev/null && echo -e "${color_green}API OK${color_reset}" || echo -e "${color_red}API FAIL${color_reset}"
+    curl -fsS http://localhost:8080 >/dev/null && echo -e "${color_green}Chatwoot OK${color_reset}" || echo -e "${color_red}Chatwoot FAIL${color_reset}"
+    if command -v ss >/dev/null 2>&1; then
+      ss -ltn "( sport = :8081 )" | grep -q ":8081" && echo -e "${color_green}Traefik OK${color_reset}" || echo -e "${color_red}Traefik FAIL${color_reset}"
+    else
+      curl -fsS http://localhost:8081 >/dev/null && echo -e "${color_green}Traefik OK${color_reset}" || echo -e "${color_red}Traefik FAIL${color_reset}"
+    fi
+  else
+    echo -e "${color_red}curl not available, skipping health checks${color_reset}"
+  fi
+}
+
+validate_prod() {
+  echo "Validating prod stacks..."
+  docker stack ls
+  docker service ls
+  load_env "$DOCKER_DIR/.env.prod"
+  validate_db_prod || true
+  echo "Health checks (prod)..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS "https://${API_DOMAIN}/health/live" >/dev/null && echo -e "${color_green}API OK${color_reset}" || echo -e "${color_red}API FAIL${color_reset}"
+    curl -fsS "https://${CHATWOOT_DOMAIN}" >/dev/null && echo -e "${color_green}Chatwoot OK${color_reset}" || echo -e "${color_red}Chatwoot FAIL${color_reset}"
+    curl -fsS "https://${TRAEFIK_DOMAIN}/dashboard/" >/dev/null && echo -e "${color_green}Traefik OK${color_reset}" || echo -e "${color_red}Traefik FAIL${color_reset}"
+    curl -fsS "https://${PORTAINER_DOMAIN}" >/dev/null && echo -e "${color_green}Portainer OK${color_reset}" || echo -e "${color_red}Portainer FAIL${color_reset}"
+  else
+    echo -e "${color_red}curl not available, skipping health checks${color_reset}"
+  fi
+}
+
+remove_stacks() {
+  local mode="$1"
+  if [ "$mode" = "prod" ]; then
+    for entry in $(load_stacks prod); do
+      local name="${entry%%|*}"
+      echo "Removing stack $name"
+      docker stack rm "$name"
+    done
+  else
+    for entry in $(load_stacks dev); do
+      local file="${entry##*|}"
+      echo "Stopping compose $file"
+      (cd "$DOCKER_DIR" && docker compose -f "$file" down)
+    done
+  fi
+}
+
+list_stacks() {
+  local mode="$1"
+  echo "Stacks (${mode}):"
+  for entry in $(load_stacks "$mode"); do
+    local name="${entry%%|*}"
+    local file="${entry##*|}"
+    echo "- ${name} -> ${file}"
+  done
+}
+
+update_stacks() {
+  local mode="$1"
+  local env_file="$DOCKER_DIR/.env.${mode}"
+  if [ ! -f "$env_file" ]; then
+    echo -e "${color_red}Missing env file: $env_file${color_reset}"
+    return 1
+  fi
+  init_stack_envs "$mode"
+  read -rp "Stack name to update (or 'all'): " target
+  if [ -z "$target" ]; then
+    return 0
+  fi
+  for entry in $(load_stacks "$mode"); do
+    local name="${entry%%|*}"
+    local file="${entry##*|}"
+    if [ "$target" != "all" ] && [ "$target" != "$name" ]; then
+      continue
+    fi
+    local stack_env_file
+    local merged_env_file
+    stack_env_file=$(env_file_for_stack "$mode" "$name")
+    merged_env_file="/tmp/whatpro-env-${mode}-${name}.env"
+    merge_env_files "$env_file" "$stack_env_file" "$merged_env_file"
+    if [ "$mode" = "prod" ]; then
+      echo "Updating (swarm) $name -> $file"
+      deploy_with_retry "swarm update $name" "cd \"$DOCKER_DIR\" && set -a && source \"$merged_env_file\" && set +a && docker stack deploy -c \"$file\" \"$name\""
+    else
+      echo "Updating (compose) $name -> $file"
+      deploy_with_retry "compose update $name" "cd \"$DOCKER_DIR\" && docker compose -f \"$file\" --env-file \"$merged_env_file\" up -d"
+    fi
+  done
+}
+
+edit_env() {
+  local mode="$1"
+  local base_env="$DOCKER_DIR/.env.${mode}"
+  init_stack_envs "$mode"
+  echo "1) Base env: $base_env"
+  echo "2) Stack env override"
+  read -rp "Select: " choice
+  case "$choice" in
+    1) edit_env_file "$base_env" ;;
+    2)
+      read -rp "Stack name: " stack_name
+      if [ -z "$stack_name" ]; then
+        return 0
+      fi
+      edit_env_file "$(env_file_for_stack "$mode" "$stack_name")"
+      ;;
+    *) echo "Invalid option" ;;
+  esac
+}
+
+backup_db_dev() {
+  echo "Backup database (dev)..."
+  local log_file="$ROOT_DIR/backups/backup.log"
+  local cid
+  cid=$(docker ps --filter "name=pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector container not found${color_reset}"
+    printf "[%s] dev backup failed: pgvector not found\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$log_file"
+    return 1
+  fi
+  local ts
+  ts=$(date +%Y%m%d_%H%M%S)
+  local out="$ROOT_DIR/backups/whatpro_hub_dev_${ts}.sql"
+  local out_gz="${out}.gz"
+  mkdir -p "$ROOT_DIR/backups"
+  docker exec "$cid" pg_dump -U postgres whatpro_hub > "$out"
+  if command -v gzip >/dev/null 2>&1; then
+    gzip -c "$out" > "$out_gz"
+    echo -e "${color_green}Backup created: ${out}${color_reset}"
+    echo -e "${color_green}Compressed backup: ${out_gz}${color_reset}"
+    printf "[%s] dev backup ok: %s | %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$out" "$out_gz" >> "$log_file"
+  else
+    echo -e "${color_green}Backup created: ${out}${color_reset}"
+    printf "[%s] dev backup ok: %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$out" >> "$log_file"
+  fi
+}
+
+backup_db_prod() {
+  echo "Backup database (prod)..."
+  local log_file="$ROOT_DIR/backups/backup.log"
+  local cid
+  cid=$(docker ps --filter "label=com.docker.swarm.service.name=whatpro-hub_pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector task not found${color_reset}"
+    printf "[%s] prod backup failed: pgvector not found\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$log_file"
+    return 1
+  fi
+  local ts
+  ts=$(date +%Y%m%d_%H%M%S)
+  local out="$ROOT_DIR/backups/whatpro_hub_prod_${ts}.sql"
+  local out_gz="${out}.gz"
+  mkdir -p "$ROOT_DIR/backups"
+  docker exec "$cid" pg_dump -U postgres whatpro_hub > "$out"
+  if command -v gzip >/dev/null 2>&1; then
+    gzip -c "$out" > "$out_gz"
+    echo -e "${color_green}Backup created: ${out}${color_reset}"
+    echo -e "${color_green}Compressed backup: ${out_gz}${color_reset}"
+    printf "[%s] prod backup ok: %s | %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$out" "$out_gz" >> "$log_file"
+  else
+    echo -e "${color_green}Backup created: ${out}${color_reset}"
+    printf "[%s] prod backup ok: %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$out" >> "$log_file"
+  fi
+}
+
+validate_backup_file() {
+  local backup_file="$1"
+  if [ -z "$backup_file" ] || [ ! -f "$backup_file" ]; then
+    echo -e "${color_red}Backup file not found${color_reset}"
+    return 1
+  fi
+  case "$backup_file" in
+    *.sql|*.dump|*.sql.gz) ;;
+    *)
+      echo -e "${color_yellow}Unknown backup extension. Expected .sql or .dump${color_reset}"
+      ;;
+  esac
+  if [ ! -s "$backup_file" ]; then
+    echo -e "${color_red}Backup file is empty${color_reset}"
+    return 1
+  fi
+  return 0
+}
+
+integrity_check_backup() {
+  local backup_file="$1"
+  if [[ "$backup_file" == *.sql.gz ]]; then
+    if command -v gzip >/dev/null 2>&1; then
+      gzip -t "$backup_file" >/dev/null 2>&1 || return 1
+    fi
+  fi
+  return 0
+}
+
+normalize_backup_input() {
+  local backup_file="$1"
+  if [[ "$backup_file" == *.sql.gz ]]; then
+    if ! command -v gzip >/dev/null 2>&1; then
+      echo ""
+      return 1
+    fi
+    gzip -cd "$backup_file"
+    return 0
+  fi
+  cat "$backup_file"
+}
+
+restore_db_prompt_method() {
+  local backup_file="$1"
+  if [[ "$backup_file" == *.dump ]]; then
+    echo "Detected .dump format. Recommended: pg_restore"
+    echo "1) pg_restore (recommended)"
+    echo "2) psql (try anyway)"
+    read -rp "Select: " method
+    case "$method" in
+      2) echo "psql" ;;
+      *) echo "pg_restore" ;;
+    esac
+  else
+    echo "Detected .sql format. Recommended: psql"
+    echo "1) psql (recommended)"
+    echo "2) pg_restore (try anyway)"
+    read -rp "Select: " method
+    case "$method" in
+      2) echo "pg_restore" ;;
+      *) echo "psql" ;;
+    esac
+  fi
+}
+
+restore_db_dev() {
+  echo "Restore database (dev)..."
+  local log_file="$ROOT_DIR/backups/restore.log"
+  read -rp "Path to backup file (.sql, .dump, .sql.gz): " backup_file
+  validate_backup_file "$backup_file" || return 1
+  if ! integrity_check_backup "$backup_file"; then
+    echo -e "${color_red}Backup integrity check failed${color_reset}"
+    printf "[%s] dev restore failed: integrity check failed (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+    return 1
+  fi
+  local cid
+  cid=$(docker ps --filter "name=pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector container not found${color_reset}"
+    printf "[%s] dev restore failed: pgvector not found\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$log_file"
+    return 1
+  fi
+  echo "Creating safety snapshot before restore..."
+  backup_db_dev
+  echo -e "${color_yellow}This will overwrite data in whatpro_hub${color_reset}"
+  read -rp "Continue? (y/N): " ans
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    return 0
+  fi
+  local rollback_file
+  rollback_file=$(ls -t "$ROOT_DIR"/backups/whatpro_hub_dev_*.sql 2>/dev/null | head -n 1)
+  local method
+  method=$(restore_db_prompt_method "$backup_file")
+  if [ "$method" = "pg_restore" ]; then
+    if ! normalize_backup_input "$backup_file" | docker exec -i "$cid" pg_restore -U postgres -d whatpro_hub --clean --if-exists; then
+      echo -e "${color_red}Restore failed. Rolling back...${color_reset}"
+      printf "[%s] dev restore failed: pg_restore (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+      if [ -n "$rollback_file" ]; then
+        cat "$rollback_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub || true
+      fi
+      return 1
+    fi
+  else
+    if ! normalize_backup_input "$backup_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub; then
+      echo -e "${color_red}Restore failed. Rolling back...${color_reset}"
+      printf "[%s] dev restore failed: psql (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+      if [ -n "$rollback_file" ]; then
+        cat "$rollback_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub || true
+      fi
+      return 1
+    fi
+  fi
+  echo -e "${color_green}Restore completed${color_reset}"
+  printf "[%s] dev restore ok: %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+}
+
+restore_db_prod() {
+  echo "Restore database (prod)..."
+  local log_file="$ROOT_DIR/backups/restore.log"
+  read -rp "Path to backup file (.sql, .dump, .sql.gz): " backup_file
+  validate_backup_file "$backup_file" || return 1
+  if ! integrity_check_backup "$backup_file"; then
+    echo -e "${color_red}Backup integrity check failed${color_reset}"
+    printf "[%s] prod restore failed: integrity check failed (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+    return 1
+  fi
+  local cid
+  cid=$(docker ps --filter "label=com.docker.swarm.service.name=whatpro-hub_pgvector" --format '{{.ID}}' | head -n 1)
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector task not found${color_reset}"
+    printf "[%s] prod restore failed: pgvector not found\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$log_file"
+    return 1
+  fi
+  echo "Creating safety snapshot before restore..."
+  backup_db_prod
+  echo -e "${color_yellow}This will overwrite data in whatpro_hub${color_reset}"
+  read -rp "Continue? (y/N): " ans
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    return 0
+  fi
+  local rollback_file
+  rollback_file=$(ls -t "$ROOT_DIR"/backups/whatpro_hub_prod_*.sql 2>/dev/null | head -n 1)
+  local method
+  method=$(restore_db_prompt_method "$backup_file")
+  if [ "$method" = "pg_restore" ]; then
+    if ! normalize_backup_input "$backup_file" | docker exec -i "$cid" pg_restore -U postgres -d whatpro_hub --clean --if-exists; then
+      echo -e "${color_red}Restore failed. Rolling back...${color_reset}"
+      printf "[%s] prod restore failed: pg_restore (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+      if [ -n "$rollback_file" ]; then
+        cat "$rollback_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub || true
+      fi
+      return 1
+    fi
+  else
+    if ! normalize_backup_input "$backup_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub; then
+      echo -e "${color_red}Restore failed. Rolling back...${color_reset}"
+      printf "[%s] prod restore failed: psql (%s)\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+      if [ -n "$rollback_file" ]; then
+        cat "$rollback_file" | docker exec -i "$cid" psql -U postgres -d whatpro_hub || true
+      fi
+      return 1
+    fi
+  fi
+  echo -e "${color_green}Restore completed${color_reset}"
+  printf "[%s] prod restore ok: %s\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$backup_file" >> "$log_file"
+}
+
+get_pg_container() {
+  local mode="$1"
+  local cid=""
+  if [ "$mode" = "prod" ]; then
+    cid=$(docker ps --filter "label=com.docker.swarm.service.name=whatpro-hub_pgvector" --format '{{.ID}}' | head -n 1)
+  else
+    cid=$(docker ps --filter "name=pgvector" --format '{{.ID}}' | head -n 1)
+  fi
+  echo "$cid"
+}
+
+enable_chatwoot_enterprise() {
+  local mode="$1"
+  local cid
+  cid=$(get_pg_container "$mode")
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector container not found${color_reset}"
+    return 1
+  fi
+  local current_plan
+  current_plan=$(docker exec -i "$cid" psql -U postgres -d chatwoot -t -A -c "SELECT serialized_value FROM public.installation_configs WHERE name = 'INSTALLATION_PRICING_PLAN' LIMIT 1;" 2>/dev/null | tr -d '\r')
+  if echo "$current_plan" | grep -qi "enterprise"; then
+    echo -e "${color_yellow}Chatwoot já está em enterprise. Nenhuma alteração necessária.${color_reset}"
+    return 0
+  fi
+  local install_id
+  install_id=$(python3 - <<'PY'
+import uuid
+print(uuid.uuid4())
+PY
+)
+  echo "Applying Chatwoot enterprise flags..."
+  docker exec -i "$cid" psql -U postgres -d chatwoot <<SQL
+INSERT INTO public.installation_configs (name, serialized_value, created_at, updated_at)
+VALUES
+  ('INSTALLATION_PRICING_PLAN', '\"--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess\nvalue: enterprise\n\"', NOW(), NOW()),
+  ('INSTALLATION_PRICING_PLAN_QUANTITY', '\"--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess\nvalue: 10000\n\"', NOW(), NOW()),
+  ('INSTALLATION_IDENTIFIER', '\"--- !ruby/hash:ActiveSupport::HashWithIndifferentAccess\nvalue: ${install_id}\n\"', NOW(), NOW())
+ON CONFLICT (name) DO UPDATE
+SET serialized_value = EXCLUDED.serialized_value,
+    updated_at = NOW();
+SQL
+  docker exec -i "$cid" psql -U postgres -d chatwoot -c "SELECT name, serialized_value FROM public.installation_configs WHERE name IN ('INSTALLATION_PRICING_PLAN','INSTALLATION_PRICING_PLAN_QUANTITY','INSTALLATION_IDENTIFIER');" || true
+  echo -e "${color_green}Chatwoot enterprise flags applied${color_reset}"
+}
+
+get_chatwoot_version() {
+  local image
+  image=$(docker ps --filter "name=chatwoot_app" --format '{{.Image}}' | head -n 1)
+  if [ -n "$image" ]; then
+    echo "$image"
+  else
+    echo "unknown"
+  fi
+}
+
+get_chatwoot_plan() {
+  local mode="$1"
+  local cid
+  cid=$(get_pg_container "$mode")
+  if [ -z "$cid" ]; then
+    echo "unknown"
+    return 0
+  fi
+  docker exec -i "$cid" psql -U postgres -d chatwoot -t -A -c "SELECT serialized_value FROM public.installation_configs WHERE name = 'INSTALLATION_PRICING_PLAN' LIMIT 1;" 2>/dev/null | tr -d '\r'
+}
+
+chatwoot_menu() {
+  while true; do
+    print_title
+    echo "Menu Chatwoot"
+    echo "Versão (imagem): $(get_chatwoot_version)"
+    echo "Preview: $(preview_status) (porta: $(get_preview_port))"
+    echo "Set ativo: $(cat "$DOCKER_DIR/templates/ACTIVE_SET" 2>/dev/null || echo '(none)')"
+    echo "Tipos (padrões):"
+    preview_type_counts | sed 's/^/  - /'
+    echo "1) Unlock enterprise"
+    echo "2) Aplicar templates de e-mail"
+    echo "3) Selecionar set de templates"
+    echo "4) Preview templates"
+    echo "5) Regenerar preview agora"
+    echo "6) Traduzir templates para pt-BR"
+    echo "0) Voltar"
+    read -rp "Selecione: " choice
+    case "$choice" in
+      1)
+        local mode
+        mode=$(prompt_mode) || { pause; continue; }
+        echo "Plano atual: $(get_chatwoot_plan "$mode")"
+        enable_chatwoot_enterprise "$mode"
+        ;;
+      2)
+        local mode
+        mode=$(prompt_mode) || { pause; continue; }
+        apply_chatwoot_email_templates "$mode"
+        ;;
+      3)
+        select_chatwoot_template_set
+        ;;
+      4)
+        preview_chatwoot_templates
+        ;;
+      5)
+        generate_preview_pages >/tmp/whatpro-preview-gen.log 2>&1 || true
+        if [ -f "$DOCKER_DIR/templates/previews/index.html" ]; then
+          echo "Preview regenerado."
+        else
+          echo "Falha ao regenerar preview."
+          [ -f /tmp/whatpro-preview-gen.log ] && tail -n 20 /tmp/whatpro-preview-gen.log || true
+        fi
+        ;;
+      6)
+        translate_chatwoot_templates_ptbr
+        ;;
+      0) break ;;
+      *) echo "Opção inválida" ;;
+    esac
+    pause
+  done
+}
+
+list_chatwoot_template_sets() {
+  local sets_dir="$DOCKER_DIR/templates/sets"
+  if [ ! -d "$sets_dir" ]; then
+    echo ""
+    return 0
+  fi
+  ls -1 "$sets_dir"
+}
+
+sync_chatwoot_defaults() {
+  local defaults_dir="$DOCKER_DIR/templates/defaults"
+  local container
+  container=$(docker ps --format '{{.Names}}' | grep -E 'chatwoot.*app' | head -n 1 || true)
+  if [ -z "$container" ]; then
+    echo -e "${color_red}Container do Chatwoot não encontrado${color_reset}"
+    return 1
+  fi
+  rm -rf "$defaults_dir"
+  mkdir -p "$defaults_dir"
+  docker exec "$container" tar -C /app/app/views -cf - devise/mailer mailers 2>/dev/null | tar -C "$defaults_dir" -xf - 2>/dev/null || true
+  echo -e "${color_green}Templates padrão sincronizados${color_reset}"
+}
+
+apply_theme_to_all_types() {
+  local set_name="$1"
+  local defaults_dir="$DOCKER_DIR/templates/defaults"
+  local set_dir="$DOCKER_DIR/templates/sets/$set_name"
+  local mailer_dir="$set_dir/chatwoot_mailer"
+  local mailers_dir="$set_dir/chatwoot_mailers"
+
+  if [ ! -d "$defaults_dir" ]; then
+    echo -e "${color_yellow}Defaults ausentes. Sincronizando do container...${color_reset}"
+    sync_chatwoot_defaults || return 1
+  fi
+
+  mkdir -p "$mailer_dir" "$mailers_dir"
+  read -rp "Sobrescrever arquivos existentes no set? (y/N): " overwrite
+  local overwrite_flag="false"
+  if [[ "$overwrite" =~ ^[Yy]$ ]]; then
+    overwrite_flag="true"
+  fi
+
+  SET_NAME="$set_name" DEFAULTS_DIR="$defaults_dir" MAILER_DIR="$mailer_dir" MAILERS_DIR="$mailers_dir" OVERWRITE_FLAG="$overwrite_flag" python3 - <<'PY'
+from pathlib import Path
+import os
+
+set_name = os.environ.get("SET_NAME", "modern")
+defaults_dir = Path(os.environ["DEFAULTS_DIR"])
+mailer_dir = Path(os.environ["MAILER_DIR"])
+mailers_dir = Path(os.environ["MAILERS_DIR"])
+overwrite = os.environ.get("OVERWRITE_FLAG", "false") == "true"
+
+def theme_wrapper(content: str) -> str:
+    if set_name == "bold":
+        header = "<div style='padding:18px;background:#0b0f1a;color:#e5e7eb;border-bottom:1px solid #1f2937'><strong>Whatpro</strong></div>"
+        footer = "<div style='padding:12px;color:#94a3b8;font-size:12px;border-top:1px solid #1f2937'>Whatpro Hub</div>"
+        body = f"<div style='padding:20px;color:#e5e7eb'>{content}</div>"
+        return f"<html><body style='margin:0;background:#0b0f1a;font-family:Arial,Helvetica,sans-serif'>{header}{body}{footer}</body></html>"
+    if set_name == "minimal":
+        header = "<div style='padding:14px;border-bottom:1px solid #e5e7eb'><strong>Whatpro</strong></div>"
+        footer = "<div style='padding:12px;color:#6b7280;font-size:12px;border-top:1px solid #e5e7eb'>Whatpro Hub</div>"
+        body = f"<div style='padding:20px'>{content}</div>"
+        return f"<html><body style='margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827'>{header}{body}{footer}</body></html>"
+    header = "<div style='padding:18px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#ffffff'><strong>Whatpro</strong></div>"
+    footer = "<div style='padding:12px;color:#6b7280;font-size:12px;background:#f3f4f6'>Whatpro Hub</div>"
+    body = f"<div style='padding:20px'>{content}</div>"
+    return f"<html><body style='margin:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827'>{header}{body}{footer}</body></html>"
+
+def should_write(path: Path) -> bool:
+    return overwrite or not path.exists()
+
+for src in defaults_dir.glob("devise/mailer/*.erb"):
+    out = mailer_dir / src.name
+    if not should_write(out):
+        continue
+    raw = src.read_text(errors="ignore")
+    wrapped = theme_wrapper(raw)
+    out.write_text(wrapped)
+
+for src in defaults_dir.rglob("mailers/*"):
+    if not src.is_file():
+        continue
+    rel = src.relative_to(defaults_dir / "mailers")
+    out = mailers_dir / rel
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not should_write(out):
+        continue
+    raw = src.read_text(errors="ignore")
+    if src.suffix in (".erb", ".liquid"):
+        wrapped = theme_wrapper(raw)
+        out.write_text(wrapped)
+    else:
+        out.write_text(raw)
+PY
+
+  echo -e "${color_green}Tema aplicado a todos os tipos (defaults)${color_reset}"
+}
+
+select_chatwoot_template_set() {
+  local sets_dir="$DOCKER_DIR/templates/sets"
+  if [ ! -d "$sets_dir" ]; then
+    echo -e "${color_red}No template sets found in $sets_dir${color_reset}"
+    return 1
+  fi
+  echo "Available sets:"
+  list_chatwoot_template_sets
+  read -rp "Set name: " set_name
+  if [ -z "$set_name" ]; then
+    return 1
+  fi
+  local src_mailer="$sets_dir/$set_name/chatwoot_mailer"
+  local src_mailers="$sets_dir/$set_name/chatwoot_mailers"
+  if [ ! -d "$src_mailer" ] && [ ! -d "$src_mailers" ]; then
+    echo -e "${color_red}Set não encontrado: $set_name${color_reset}"
+    return 1
+  fi
+  mkdir -p "$DOCKER_DIR/templates/chatwoot_mailer" "$DOCKER_DIR/templates/chatwoot_mailers"
+  if command -v rsync >/dev/null 2>&1; then
+    if [ -d "$src_mailer" ]; then
+      rsync -a --delete "$src_mailer"/ "$DOCKER_DIR/templates/chatwoot_mailer/"
+    fi
+  if [ -d "$src_mailers" ]; then
+    rsync -a --delete "$src_mailers"/ "$DOCKER_DIR/templates/chatwoot_mailers/"
+  fi
+  else
+    if [ -d "$src_mailer" ]; then
+      cp -a "$src_mailer"/. "$DOCKER_DIR/templates/chatwoot_mailer/"
+    fi
+    if [ -d "$src_mailers" ]; then
+      cp -a "$src_mailers"/. "$DOCKER_DIR/templates/chatwoot_mailers/"
+    fi
+  fi
+  echo "$set_name" > "$DOCKER_DIR/templates/ACTIVE_SET"
+  echo -e "${color_green}Set de template aplicado: $set_name${color_reset}"
+  read -rp "Aplicar tema deste set em TODOS os tipos? (y/N): " apply_all
+  if [[ "$apply_all" =~ ^[Yy]$ ]]; then
+    apply_theme_to_all_types "$set_name"
+  fi
+}
+
+preview_chatwoot_templates() {
+  local sets_dir="$DOCKER_DIR/templates/previews"
+  local port="$PREVIEW_PORT_DEFAULT"
+  local pid_file="$DOCKER_DIR/templates/.preview.pid"
+  local port_file="$DOCKER_DIR/templates/.preview.port"
+  local max_wait=5
+  local preview_script="$ROOT_DIR/installer/preview-chatwoot-templates.sh"
+  if [ ! -x "$preview_script" ] && [ -x "$ROOT_DIR/scripts/preview-chatwoot-templates.sh" ]; then
+    preview_script="$ROOT_DIR/scripts/preview-chatwoot-templates.sh"
+  fi
+  local log_file="/tmp/whatpro-preview.log"
+  echo "Preview de templates (Chatwoot)"
+  echo "Diretório: $sets_dir"
+  local wsl_ip
+  wsl_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  echo "URL (local): http://localhost:${port}"
+  if [ -n "$wsl_ip" ]; then
+    echo "URL (WSL IP): http://${wsl_ip}:${port}"
+  fi
+  echo "Status atual: $(preview_status)"
+  echo "Sets disponíveis:"
+  if [ -d "$sets_dir" ]; then
+    ls -1 "$sets_dir" || true
+  else
+    echo "(nenhum)"
+  fi
+  # sempre reinicia o preview para garantir conteúdo atualizado
+  if [ -f "$pid_file" ]; then
+    local reset_pid
+    reset_pid=$(cat "$pid_file")
+    if [ -n "$reset_pid" ] && ps -p "$reset_pid" >/dev/null 2>&1; then
+      kill "$reset_pid" >/dev/null 2>&1 || true
+    fi
+    rm -f "$pid_file"
+  fi
+  rm -f "$port_file"
+  rm -f "$log_file"
+  rm -rf "$sets_dir"/* 2>/dev/null || true
+  if is_port_in_use "$port"; then
+    port="$PREVIEW_PORT_ALT"
+  fi
+  if [ -f "$pid_file" ]; then
+    local existing_pid
+    existing_pid=$(cat "$pid_file")
+    if ps -p "$existing_pid" >/dev/null 2>&1; then
+      if curl -fsS "http://localhost:${port}" >/dev/null 2>&1; then
+        echo -e "${color_yellow}Preview já está rodando (PID ${existing_pid})${color_reset}"
+        read -rp "Parar preview? (y/N): " ans_stop
+        if [[ "$ans_stop" =~ ^[Yy]$ ]]; then
+          kill "$existing_pid" >/dev/null 2>&1 || true
+          rm -f "$pid_file"
+          echo -e "${color_green}Preview parado${color_reset}"
+        fi
+        return 0
+      else
+        echo -e "${color_yellow}Preview travado. Encerrando...${color_reset}"
+        kill "$existing_pid" >/dev/null 2>&1 || true
+        rm -f "$pid_file"
+      fi
+    else
+      rm -f "$pid_file"
+    fi
+  fi
+  generate_preview_pages >/tmp/whatpro-preview-gen.log 2>&1 || true
+  if [ ! -f "$sets_dir/index.html" ] && [ -x "$preview_script" ]; then
+    PREVIEW_GENERATE_ONLY=1 "$preview_script" >/tmp/whatpro-preview-gen.log 2>&1 || true
+  fi
+  if [ ! -f "$sets_dir/index.html" ]; then
+    cat > "$sets_dir/index.html" <<'HTML'
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Chatwoot Email Preview</title>
+  </head>
+  <body style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;margin:0;padding:24px;color:#0f172a">
+    <h1>Chatwoot Email Preview</h1>
+    <p>Pré-visualização ainda não foi gerada corretamente.</p>
+    <p>Execute novamente o preview pelo menu.</p>
+  </body>
+</html>
+HTML
+  fi
+  if is_port_in_use "$port"; then
+    echo -e "${color_yellow}Porta ${port} em uso.${color_reset}"
+    local new_port
+    new_port=$(find_free_port "$PREVIEW_PORT_MIN" "$PREVIEW_PORT_MAX" || true)
+    if [ -n "$new_port" ]; then
+      read -rp "Usar porta ${new_port}? (y/N): " use_new
+      if [[ "$use_new" =~ ^[Yy]$ ]]; then
+        port="$new_port"
+      else
+        echo -e "${color_red}Preview cancelado${color_reset}"
+        return 1
+      fi
+    else
+      echo -e "${color_red}Nenhuma porta livre encontrada (${PREVIEW_PORT_MIN}-${PREVIEW_PORT_MAX})${color_reset}"
+      return 1
+    fi
+  fi
+  echo "Iniciando preview na porta ${port}..."
+  (cd "$sets_dir" && python3 -m http.server "$port" --bind 0.0.0.0 >"$log_file" 2>&1 & echo $! > "$pid_file")
+  echo "$port" > "$port_file"
+  local waited=0
+  while [ "$waited" -lt "$max_wait" ]; do
+    if [ -f "$pid_file" ]; then
+      local pid
+      pid=$(cat "$pid_file")
+      if ps -p "$pid" >/dev/null 2>&1 && curl -fsS "http://localhost:${port}" >/dev/null 2>&1; then
+        echo -e "${color_green}Preview iniciado${color_reset}"
+        echo "URL (local): http://localhost:${port}"
+        if [ -n "$wsl_ip" ]; then
+          echo "URL (WSL IP): http://${wsl_ip}:${port}"
+        fi
+        echo "Página consolidada: http://localhost:${port}/ (ou /defaults/)"
+        read -rp "Abrir no navegador agora? (y/N): " open_now
+        if [[ "$open_now" =~ ^[Yy]$ ]]; then
+          if command -v wslview >/dev/null 2>&1; then
+            wslview "http://localhost:${port}/" >/dev/null 2>&1 || true
+          elif command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "http://localhost:${port}/" >/dev/null 2>&1 || true
+          else
+            echo "Abra manualmente: http://localhost:${port}/"
+          fi
+        fi
+        return 0
+      fi
+    fi
+    sleep 1
+    waited=$((waited+1))
+  done
+  echo -e "${color_red}Falha ao iniciar preview${color_reset}"
+  if [ -f "$log_file" ]; then
+    echo "Log:"
+    tail -n 20 "$log_file" || true
+  fi
+}
+
+apply_chatwoot_email_templates() {
+  local mode="$1"
+  local templates_dir="$DOCKER_DIR/templates"
+  local mailer_dir="$templates_dir/chatwoot_mailer"
+  local mailers_dir="$templates_dir/chatwoot_mailers"
+  local has_templates="false"
+  if [ ! -d "$mailer_dir" ] && [ ! -d "$mailers_dir" ]; then
+    echo -e "${color_red}Nenhum template encontrado em $templates_dir${color_reset}"
+    return 1
+  fi
+  if [ -d "$mailer_dir" ] && [ "$(find "$mailer_dir" -type f | wc -l)" -gt 0 ]; then
+    has_templates="true"
+  fi
+  if [ -d "$mailers_dir" ] && [ "$(find "$mailers_dir" -type f | wc -l)" -gt 0 ]; then
+    has_templates="true"
+  fi
+  if [ "$has_templates" = "false" ]; then
+    echo -e "${color_red}Diretórios de templates estão vazios${color_reset}"
+    return 1
+  fi
+  echo "Copiando templates de e-mail do Chatwoot para os volumes..."
+  if [ -d "$mailer_dir" ]; then
+    docker run --rm -v chatwoot_mailer:/target -v "$mailer_dir":/src alpine sh -c 'cp -a /src/. /target/'
+  fi
+  if [ -d "$mailers_dir" ]; then
+    docker run --rm -v chatwoot_mailers:/target -v "$mailers_dir":/src alpine sh -c 'cp -a /src/. /target/'
+  fi
+  echo -e "${color_green}Templates aplicados${color_reset}"
+}
+
+translate_chatwoot_templates_ptbr() {
+  local templates_dir="$DOCKER_DIR/templates"
+  local mailer_dir="$templates_dir/chatwoot_mailer"
+  local mailers_dir="$templates_dir/chatwoot_mailers"
+  if [ ! -d "$mailer_dir" ] && [ ! -d "$mailers_dir" ]; then
+    echo -e "${color_red}Nenhum template aplicado para traduzir${color_reset}"
+    return 1
+  fi
+  read -rp "Traduzir TODOS os templates aplicados para pt-BR? (y/N): " ans
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    echo "Operação cancelada."
+    return 0
+  fi
+  python3 - <<'PY' "$mailer_dir" "$mailers_dir"
+import sys
+from pathlib import Path
+
+mailer_dir = Path(sys.argv[1])
+mailers_dir = Path(sys.argv[2])
+
+REPL = {
+    "Reset password": "Redefinir senha",
+    "reset password": "redefinir senha",
+    "Change my password": "Alterar minha senha",
+    "Confirm your account": "Confirme sua conta",
+    "Unlock your account": "Desbloqueie sua conta",
+    "Your account has been locked": "Sua conta foi bloqueada",
+    "You can confirm your account": "Você pode confirmar sua conta",
+    "You can unlock your account": "Você pode desbloquear sua conta",
+    "Welcome": "Bem-vindo",
+    "Hello": "Olá",
+    "Hi": "Olá",
+    "Password": "Senha",
+    "Email": "Email",
+    "Team": "Equipe",
+    "Conversation": "Conversa",
+    "Message": "Mensagem",
+    "mentioned you": "mencionou você",
+    "assigned": "atribuído",
+    "New reply": "Nova resposta",
+    "New message": "Nova mensagem",
+    "Thanks": "Obrigado",
+}
+
+def translate(text: str) -> str:
+    out = text
+    for k, v in REPL.items():
+        out = out.replace(k, v)
+    return out
+
+def process_dir(root: Path):
+    if not root.exists():
+        return
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        if p.suffix not in (".erb", ".liquid", ".html"):
+            continue
+        raw = p.read_text(errors="ignore")
+        p.write_text(translate(raw))
+
+process_dir(mailer_dir)
+process_dir(mailers_dir)
+print("OK")
+PY
+  echo -e "${color_green}Templates traduzidos para pt-BR (base). Revise se necessário.${color_reset}"
+}
+
+post_deploy_chatwoot_actions() {
+  local mode="$1"
+  read -rp "Aplicar unlock enterprise agora? (y/N): " ans_enterprise
+  if [[ "$ans_enterprise" =~ ^[Yy]$ ]]; then
+    enable_chatwoot_enterprise "$mode"
+  fi
+  read -rp "Aplicar templates de e-mail agora? (y/N): " ans_templates
+  if [[ "$ans_templates" =~ ^[Yy]$ ]]; then
+    read -rp "Selecionar um set antes de aplicar? (y/N): " ans_select
+    if [[ "$ans_select" =~ ^[Yy]$ ]]; then
+      select_chatwoot_template_set || true
+    fi
+    apply_chatwoot_email_templates "$mode"
+  fi
+}
+
+# ============================================================================
+# DEV REQUIREMENTS INSTALLATION
+# ============================================================================
+
+GO_VERSION="1.23.6"
+NODE_VERSION="20"
+
+check_dev_requirements() {
+  echo ""
+  echo -e "${color_yellow}=== Verificação de Requisitos de Desenvolvimento ===${color_reset}"
+  echo -e "Plataforma detectada: ${color_green}${PLATFORM}${color_reset}"
+  echo ""
+
+  local missing=()
+
+  # Go
+  if command -v go >/dev/null 2>&1; then
+    echo -e "✅ Go: $(go version | awk '{print $3}')"
+  else
+    echo -e "❌ Go: não instalado"
+    missing+=("go")
+  fi
+
+  # Node.js
+  if command -v node >/dev/null 2>&1; then
+    echo -e "✅ Node.js: $(node --version)"
+  else
+    echo -e "❌ Node.js: não instalado"
+    missing+=("node")
+  fi
+
+  # npm
+  if command -v npm >/dev/null 2>&1; then
+    echo -e "✅ npm: $(npm --version)"
+  else
+    echo -e "❌ npm: não instalado"
+    missing+=("npm")
+  fi
+
+  # Docker
+  if command -v docker >/dev/null 2>&1; then
+    echo -e "✅ Docker: $(docker --version | awk '{print $3}' | tr -d ',')"
+  else
+    echo -e "❌ Docker: não instalado"
+    missing+=("docker")
+  fi
+
+  # Docker Compose
+  if docker compose version >/dev/null 2>&1; then
+    echo -e "✅ Docker Compose: $(docker compose version --short)"
+  else
+    echo -e "❌ Docker Compose: não instalado"
+    missing+=("docker-compose")
+  fi
+
+  # Git
+  if command -v git >/dev/null 2>&1; then
+    echo -e "✅ Git: $(git --version | awk '{print $3}')"
+  else
+    echo -e "❌ Git: não instalado"
+    missing+=("git")
+  fi
+
+  # Python3
+  if command -v python3 >/dev/null 2>&1; then
+    echo -e "✅ Python3: $(python3 --version | awk '{print $2}')"
+  else
+    echo -e "❌ Python3: não instalado"
+    missing+=("python3")
+  fi
+
+  echo ""
+  if [ ${#missing[@]} -eq 0 ]; then
+    echo -e "${color_green}Todos os requisitos estão instalados!${color_reset}"
+    return 0
+  else
+    echo -e "${color_red}Faltando: ${missing[*]}${color_reset}"
+    return 1
+  fi
+}
+
+install_go() {
+  echo -e "${color_yellow}Instalando Go ${GO_VERSION}...${color_reset}"
+  
+  local arch
+  case "$(uname -m)" in
+    x86_64) arch="amd64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *) echo -e "${color_red}Arquitetura não suportada${color_reset}"; return 1 ;;
+  esac
+
+  case "$PLATFORM" in
+    macos)
+      if command -v brew >/dev/null 2>&1; then
+        brew install go
+      else
+        echo "Baixando Go para macOS..."
+        curl -LO "https://go.dev/dl/go${GO_VERSION}.darwin-${arch}.tar.gz"
+        sudo rm -rf /usr/local/go
+        sudo tar -C /usr/local -xzf "go${GO_VERSION}.darwin-${arch}.tar.gz"
+        rm "go${GO_VERSION}.darwin-${arch}.tar.gz"
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.zshrc
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+      fi
+      ;;
+    linux|wsl)
+      echo "Baixando Go ${GO_VERSION} para Linux..."
+      wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" -O /tmp/go.tar.gz
+      sudo rm -rf /usr/local/go
+      sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+      rm /tmp/go.tar.gz
+      
+      # Add to PATH
+      if ! grep -q '/usr/local/go/bin' ~/.bashrc; then
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+      fi
+      if ! grep -q '/usr/local/go/bin' ~/.profile; then
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
+      fi
+      export PATH=$PATH:/usr/local/go/bin
+      ;;
+    *)
+      echo -e "${color_red}Plataforma não suportada para instalação automática${color_reset}"
+      return 1
+      ;;
+  esac
+  
+  echo -e "${color_green}Go instalado: $(/usr/local/go/bin/go version)${color_reset}"
+}
+
+install_node() {
+  echo -e "${color_yellow}Instalando Node.js ${NODE_VERSION}...${color_reset}"
+  
+  case "$PLATFORM" in
+    macos)
+      if command -v brew >/dev/null 2>&1; then
+        brew install node@${NODE_VERSION}
+      else
+        echo "Instalando via nvm..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install ${NODE_VERSION}
+        nvm use ${NODE_VERSION}
+      fi
+      ;;
+    linux|wsl)
+      if command -v nvm >/dev/null 2>&1; then
+        nvm install ${NODE_VERSION}
+        nvm use ${NODE_VERSION}
+      else
+        echo "Instalando nvm e Node.js..."
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install ${NODE_VERSION}
+        nvm use ${NODE_VERSION}
+        nvm alias default ${NODE_VERSION}
+      fi
+      ;;
+    *)
+      echo -e "${color_red}Plataforma não suportada${color_reset}"
+      return 1
+      ;;
+  esac
+  
+  echo -e "${color_green}Node.js instalado: $(node --version)${color_reset}"
+}
+
+install_docker() {
+  echo -e "${color_yellow}Instalando Docker...${color_reset}"
+  
+  case "$PLATFORM" in
+    macos)
+      echo "Para macOS, instale o Docker Desktop manualmente:"
+      echo "https://www.docker.com/products/docker-desktop/"
+      return 1
+      ;;
+    wsl)
+      echo "Para WSL, você tem duas opções:"
+      echo "1) Instalar Docker Desktop no Windows com integração WSL2"
+      echo "2) Instalar Docker Engine nativo no WSL (recomendado para VPS)"
+      read -rp "Instalar Docker Engine nativo no WSL? (y/N): " ans
+      if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+        echo "Instale o Docker Desktop: https://www.docker.com/products/docker-desktop/"
+        return 1
+      fi
+      ;&  # Fall through to linux case
+    linux)
+      echo "Instalando Docker Engine..."
+      
+      # Remove old versions
+      for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+        sudo apt-get remove -y $pkg 2>/dev/null || true
+      done
+      
+      # Install prerequisites
+      sudo apt-get update
+      sudo apt-get install -y ca-certificates curl gnupg
+      
+      # Add Docker GPG key
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      
+      # Add repository
+      echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      
+      # Install Docker
+      sudo apt-get update
+      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      
+      # Add user to docker group
+      sudo usermod -aG docker $USER
+      
+      # Start Docker
+      sudo systemctl enable docker
+      sudo systemctl start docker || sudo service docker start
+      
+      echo -e "${color_green}Docker instalado!${color_reset}"
+      echo -e "${color_yellow}IMPORTANTE: Faça logout e login para usar Docker sem sudo${color_reset}"
+      ;;
+    *)
+      echo -e "${color_red}Plataforma não suportada${color_reset}"
+      return 1
+      ;;
+  esac
+}
+
+install_git() {
+  echo -e "${color_yellow}Instalando Git...${color_reset}"
+  
+  case "$PLATFORM" in
+    macos)
+      if command -v brew >/dev/null 2>&1; then
+        brew install git
+      else
+        xcode-select --install
+      fi
+      ;;
+    linux|wsl)
+      sudo apt-get update
+      sudo apt-get install -y git
+      ;;
+    *)
+      echo -e "${color_red}Plataforma não suportada${color_reset}"
+      return 1
+      ;;
+  esac
+  
+  echo -e "${color_green}Git instalado: $(git --version)${color_reset}"
+}
+
+install_python() {
+  echo -e "${color_yellow}Instalando Python3...${color_reset}"
+  
+  case "$PLATFORM" in
+    macos)
+      if command -v brew >/dev/null 2>&1; then
+        brew install python3
+      else
+        echo "Instale Homebrew primeiro: https://brew.sh"
+        return 1
+      fi
+      ;;
+    linux|wsl)
+      sudo apt-get update
+      sudo apt-get install -y python3 python3-pip python3-venv
+      ;;
+    *)
+      echo -e "${color_red}Plataforma não suportada${color_reset}"
+      return 1
+      ;;
+  esac
+  
+  echo -e "${color_green}Python instalado: $(python3 --version)${color_reset}"
+}
+
+install_dev_requirements() {
+  echo ""
+  echo -e "${color_yellow}=== Instalação de Requisitos de Desenvolvimento ===${color_reset}"
+  echo -e "Plataforma: ${color_green}${PLATFORM}${color_reset}"
+  echo ""
+  
+  check_dev_requirements
+  echo ""
+  
+  echo "Selecione o que deseja instalar:"
+  echo "1) Instalar TUDO (recomendado)"
+  echo "2) Apenas Go"
+  echo "3) Apenas Node.js"
+  echo "4) Apenas Docker"
+  echo "5) Apenas Git"
+  echo "6) Apenas Python3"
+  echo "0) Voltar"
+  
+  read -rp "Opção: " choice
+  
+  case "$choice" in
+    1)
+      echo -e "\n${color_yellow}Instalando todos os requisitos...${color_reset}\n"
+      command -v git >/dev/null 2>&1 || install_git
+      command -v python3 >/dev/null 2>&1 || install_python
+      command -v go >/dev/null 2>&1 || install_go
+      command -v node >/dev/null 2>&1 || install_node
+      command -v docker >/dev/null 2>&1 || install_docker
+      echo ""
+      check_dev_requirements
+      ;;
+    2) install_go ;;
+    3) install_node ;;
+    4) install_docker ;;
+    5) install_git ;;
+    6) install_python ;;
+    0) return 0 ;;
+    *) echo "Opção inválida" ;;
+  esac
+}
+
+main_menu() {
+  while true; do
+    print_title
+    echo "Configuração:"
+    echo "  PLATAFORMA=${PLATFORM}"
+    echo "  ROOT_DIR=${ROOT_DIR}"
+    echo "  DOCKER_DIR=${DOCKER_DIR}"
+    echo "  STACKS_JSON=${STACKS_JSON}"
+    echo ""
+    echo "1) Instalar DEV (docker compose)"
+    echo "2) Instalar PROD (docker swarm)"
+    echo "3) Validar DEV"
+    echo "4) Validar PROD"
+    echo "5) Remover stacks DEV"
+    echo "6) Remover stacks PROD"
+    echo "7) Listar stacks"
+    echo "8) Atualizar stack"
+    echo "9) Editar env"
+    echo "10) Backup do banco"
+    echo "11) Checklist da plataforma"
+    echo "12) Restaurar banco"
+    echo "13) Menu Chatwoot"
+    echo -e "${color_green}14) Instalar requisitos DEV${color_reset}"
+    echo "0) Sair"
+    read -rp "Selecione: " choice
+    case "$choice" in
+      1) check_requirements; check_resources; deploy_dev ;;
+      2) check_requirements; check_resources; deploy_prod ;;
+      3) validate_dev ;;
+      4) validate_prod ;;
+      5) remove_stacks dev ;;
+      6) remove_stacks prod ;;
+      7)
+        mode=$(prompt_mode) || { pause; continue; }
+        list_stacks "$mode"
+        ;;
+      8)
+        mode=$(prompt_mode) || { pause; continue; }
+        update_stacks "$mode"
+        ;;
+      9)
+        mode=$(prompt_mode) || { pause; continue; }
+        edit_env "$mode"
+        ;;
+      10)
+        mode=$(prompt_mode) || { pause; continue; }
+        if [ "$mode" = "prod" ]; then
+          backup_db_prod
+        else
+          backup_db_dev
+        fi
+        ;;
+      11)
+        print_platform_checklist
+        ;;
+      12)
+        mode=$(prompt_mode) || { pause; continue; }
+        if [ "$mode" = "prod" ]; then
+          restore_db_prod
+        else
+          restore_db_dev
+        fi
+        ;;
+      13) chatwoot_menu ;;
+      14) install_dev_requirements ;;
+      0) exit 0 ;;
+      *) echo "Opção inválida"; sleep 1 ;;
+    esac
+    pause
+  done
+}
+
+main_menu
+

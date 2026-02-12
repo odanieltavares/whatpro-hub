@@ -41,6 +41,18 @@ type UpdateProviderRequest struct {
 }
 
 // ListProviders handles listing providers for an account
+// @Summary List providers
+// @Description Get a list of WhatsApp providers for a specific account
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Param status query string false "Filter by status"
+// @Param type query string false "Filter by type"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/providers [get]
 func (h *Handler) ListProviders(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -85,6 +97,15 @@ func (h *Handler) ListProviders(c *fiber.Ctx) error {
 }
 
 // GetProvider handles fetching a single provider
+// @Summary Get provider details
+// @Description Get details of a specific provider
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param id path string true "Provider ID (UUID)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /providers/{id} [get]
 func (h *Handler) GetProvider(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -97,7 +118,7 @@ func (h *Handler) GetProvider(c *fiber.Ctx) error {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid provider ID")
 	}
 
-	provider, err := h.ProviderService.GetProvider(c.Context(), id)
+	provider, err := h.ProviderService.GetProvider(c.Context(), accountID, id)
 	if err != nil {
 		if err == repositories.ErrProviderNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Provider not found")
@@ -111,6 +132,17 @@ func (h *Handler) GetProvider(c *fiber.Ctx) error {
 }
 
 // CreateProvider handles creating a new provider
+// @Summary Create provider
+// @Description Create a new WhatsApp provider integration
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Param provider body CreateProviderRequest true "Provider Data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{} "Quota Exceeded"
+// @Router /accounts/{accountId}/providers [post]
 func (h *Handler) CreateProvider(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -170,6 +202,16 @@ func (h *Handler) CreateProvider(c *fiber.Ctx) error {
 }
 
 // UpdateProvider handles updating a provider
+// @Summary Update provider
+// @Description Update provider details
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param id path string true "Provider ID (UUID)"
+// @Param provider body UpdateProviderRequest true "Update Data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /providers/{id} [put]
 func (h *Handler) UpdateProvider(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -216,7 +258,7 @@ func (h *Handler) UpdateProvider(c *fiber.Ctx) error {
 		updates["metadata"] = *req.Metadata
 	}
 
-	if err := h.ProviderService.UpdateProvider(c.Context(), id, updates); err != nil {
+	if err := h.ProviderService.UpdateProvider(c.Context(), accountID, id, updates); err != nil {
 		if err == repositories.ErrProviderNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Provider not found")
 		}
@@ -224,7 +266,7 @@ func (h *Handler) UpdateProvider(c *fiber.Ctx) error {
 	}
 
 	// Fetch updated provider
-	provider, _ := h.ProviderService.GetProvider(c.Context(), id)
+	provider, _ := h.ProviderService.GetProvider(c.Context(), accountID, id)
 
 	// Audit log
 	h.AuditUpdate(c, "provider", fmt.Sprintf("%s", id), nil, updates)
@@ -235,6 +277,15 @@ func (h *Handler) UpdateProvider(c *fiber.Ctx) error {
 }
 
 // DeleteProvider handles deleting a provider
+// @Summary Delete provider
+// @Description Remove a provider from the account
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param id path string true "Provider ID (UUID)"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /providers/{id} [delete]
 func (h *Handler) DeleteProvider(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -247,7 +298,7 @@ func (h *Handler) DeleteProvider(c *fiber.Ctx) error {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid provider ID")
 	}
 
-	if err := h.ProviderService.DeleteProvider(c.Context(), id); err != nil {
+	if err := h.ProviderService.DeleteProvider(c.Context(), accountID, id); err != nil {
 		if err == repositories.ErrProviderNotFound {
 			return h.Error(c, fiber.StatusNotFound, "Provider not found")
 		}
@@ -263,6 +314,14 @@ func (h *Handler) DeleteProvider(c *fiber.Ctx) error {
 }
 
 // CheckProviderHealth defines a handler to check provider health
+// @Summary Check provider health
+// @Description Check if the provider is reachable and active
+// @Tags Providers
+// @Accept json
+// @Produce json
+// @Param id path string true "Provider ID (UUID)"
+// @Success 200 {object} map[string]interface{}
+// @Router /providers/{id}/health [get]
 func (h *Handler) CheckProviderHealth(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -275,7 +334,7 @@ func (h *Handler) CheckProviderHealth(c *fiber.Ctx) error {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid provider ID")
 	}
 
-	isHealthy, err := h.ProviderService.CheckProviderHealth(c.Context(), id)
+	isHealthy, err := h.ProviderService.CheckProviderHealth(c.Context(), accountID, id)
 	if err != nil {
 		return h.Error(c, fiber.StatusInternalServerError, "Health check failed")
 	}

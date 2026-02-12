@@ -48,9 +48,9 @@ func (s *ProviderService) ListProviders(ctx context.Context, filters map[string]
 	return providers, nil
 }
 
-// GetProvider returns a provider by ID
-func (s *ProviderService) GetProvider(ctx context.Context, id uuid.UUID) (*models.Provider, error) {
-	provider, err := s.repo.FindByID(ctx, id)
+// GetProvider returns a provider by ID scoped to an account
+func (s *ProviderService) GetProvider(ctx context.Context, accountID int, id uuid.UUID) (*models.Provider, error) {
+	provider, err := s.repo.FindByIDForAccount(ctx, id, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +62,8 @@ func (s *ProviderService) GetProvider(ctx context.Context, id uuid.UUID) (*model
 }
 
 // GetProviderWithKey returns a provider with decrypted API key (admin only)
-func (s *ProviderService) GetProviderWithKey(ctx context.Context, id uuid.UUID) (*models.Provider, string, error) {
-	provider, err := s.repo.FindByID(ctx, id)
+func (s *ProviderService) GetProviderWithKey(ctx context.Context, accountID int, id uuid.UUID) (*models.Provider, string, error) {
+	provider, err := s.repo.FindByIDForAccount(ctx, id, accountID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -94,9 +94,9 @@ func (s *ProviderService) CreateProvider(ctx context.Context, provider *models.P
 	return s.repo.Create(ctx, provider)
 }
 
-// UpdateProvider updates an existing provider
-func (s *ProviderService) UpdateProvider(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error {
-	provider, err := s.repo.FindByID(ctx, id)
+// UpdateProvider updates an existing provider scoped to an account
+func (s *ProviderService) UpdateProvider(ctx context.Context, accountID int, id uuid.UUID, updates map[string]interface{}) error {
+	provider, err := s.repo.FindByIDForAccount(ctx, id, accountID)
 	if err != nil {
 		return err
 	}
@@ -133,14 +133,14 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, id uuid.UUID, upda
 	return s.repo.Update(ctx, provider)
 }
 
-// DeleteProvider soft deletes a provider
-func (s *ProviderService) DeleteProvider(ctx context.Context, id uuid.UUID) error {
-	return s.repo.Delete(ctx, id)
+// DeleteProvider soft deletes a provider scoped to an account
+func (s *ProviderService) DeleteProvider(ctx context.Context, accountID int, id uuid.UUID) error {
+	return s.repo.DeleteForAccount(ctx, id, accountID)
 }
 
 // CheckProviderHealth performs health check on a provider
-func (s *ProviderService) CheckProviderHealth(ctx context.Context, id uuid.UUID) (bool, error) {
-	provider, apiKey, err := s.GetProviderWithKey(ctx, id)
+func (s *ProviderService) CheckProviderHealth(ctx context.Context, accountID int, id uuid.UUID) (bool, error) {
+	provider, apiKey, err := s.GetProviderWithKey(ctx, accountID, id)
 	if err != nil {
 		return false, err
 	}
@@ -205,9 +205,10 @@ func (s *ProviderService) CheckAllProvidersHealth(ctx context.Context) error {
 	}
 
 	for _, provider := range providers {
-		go func(id uuid.UUID) {
-			_, _ = s.CheckProviderHealth(context.Background(), id)
-		}(provider.ID)
+		accountID := provider.AccountID
+		go func(id uuid.UUID, accID int) {
+			_, _ = s.CheckProviderHealth(context.Background(), accID, id)
+		}(provider.ID, accountID)
 	}
 
 	return nil

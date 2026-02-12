@@ -63,6 +63,20 @@ func (r *ProviderRepository) FindByID(ctx context.Context, id uuid.UUID) (*model
 	return &provider, nil
 }
 
+// FindByIDForAccount returns a provider by ID scoped to an account
+func (r *ProviderRepository) FindByIDForAccount(ctx context.Context, id uuid.UUID, accountID int) (*models.Provider, error) {
+	var provider models.Provider
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND account_id = ?", id, accountID).
+		First(&provider).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrProviderNotFound
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
 // FindByAccountID returns all providers for an account
 func (r *ProviderRepository) FindByAccountID(ctx context.Context, accountID int) ([]models.Provider, error) {
 	var providers []models.Provider
@@ -97,6 +111,23 @@ func (r *ProviderRepository) Update(ctx context.Context, provider *models.Provid
 func (r *ProviderRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.db.WithContext(ctx).Model(&models.Provider{}).
 		Where("id = ?", id).
+		Update("status", "inactive")
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return ErrProviderNotFound
+	}
+
+	return nil
+}
+
+// DeleteForAccount soft deletes a provider scoped to an account
+func (r *ProviderRepository) DeleteForAccount(ctx context.Context, id uuid.UUID, accountID int) error {
+	result := r.db.WithContext(ctx).Model(&models.Provider{}).
+		Where("id = ? AND account_id = ?", id, accountID).
 		Update("status", "inactive")
 
 	if result.Error != nil {

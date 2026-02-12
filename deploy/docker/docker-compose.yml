@@ -1,5 +1,8 @@
 version: "3.8"
 
+# NOTE: Deprecated. Use compose.base.yml + compose.chatwoot.yml (+ compose.monitoring.yml).
+# See deploy/docker/README.md for the new standardized stack.
+
 # ============================================================================
 # WHATPRO HUB - Production-Ready Docker Stack
 # ============================================================================

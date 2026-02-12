@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // APIKey allows server-to-server auth
@@ -166,8 +165,6 @@ type Stage struct {
 	AutoActions JSON      `gorm:"type:jsonb;default:'[]'" json:"auto_actions"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	CreatedAt         time.Time       `json:"created_at"`
-	UpdatedAt         time.Time       `json:"updated_at"`
 	Cards             []Card          `gorm:"foreignKey:StageID" json:"cards,omitempty"`
 	ChecklistTemplate []ChecklistItem `gorm:"foreignKey:StageID" json:"checklist_template,omitempty"`
 }
@@ -278,4 +275,20 @@ type GatewayLog struct {
 	Message   string    `json:"message"`
 	Context   JSON      `gorm:"type:jsonb" json:"context,omitempty"`
 	CreatedAt time.Time `json:"created_at" gorm:"index"`
+}
+
+// Session represents a user session
+type Session struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	UserID       uint       `gorm:"index" json:"user_id"`
+	AccountID    int        `gorm:"index" json:"account_id"`
+	Token        string     `gorm:"uniqueIndex" json:"token"`
+	RefreshToken string     `gorm:"index" json:"refresh_token"`
+	UserAgent    string     `json:"user_agent"`
+	IPAddress    string     `json:"ip_address"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	LastSeenAt   *time.Time `json:"last_seen_at"`
+	RevokedAt    *time.Time `json:"revoked_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }

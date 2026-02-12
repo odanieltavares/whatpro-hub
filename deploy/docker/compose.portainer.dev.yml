@@ -1,0 +1,39 @@
+name: portainer
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    <<: *default-restart
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - traefik
+    ports:
+      - "${PORTAINER_HTTPS_PORT:-9443}:9443"
+      - "${PORTAINER_HTTP_PORT:-9000}:9000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`${PORTAINER_DOMAIN:-portainer.localhost}`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    logging: *default-logging
+
+networks:
+  traefik:
+    name: traefik
+    external: true
+
+volumes:
+  portainer_data:
+    name: portainer_data
+    external: true

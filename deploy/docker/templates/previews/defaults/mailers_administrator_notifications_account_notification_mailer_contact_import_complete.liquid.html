@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset='utf-8'><title>mailers/administrator_notifications/account_notification_mailer/contact_import_complete.liquid</title></head><body><pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>&lt;p&gt;Hello,&lt;/p&gt;
+
+&lt;p&gt;Your contact import has been completed. Please check the contacts tab to view the imported contacts.&lt;/p&gt;
+
+&lt;p&gt;Number of records imported: {{meta[&#x27;imported_contacts&#x27;]}}&lt;/p&gt;
+
+&lt;p&gt;Number of records failed: {{meta[&#x27;failed_contacts&#x27;]}}&lt;/p&gt;
+
+{% if meta[&#x27;failed_contacts&#x27;] == 0 %}
+  &lt;p&gt;
+    Click &lt;a href=&quot;{{action_url}}&quot;&gt;here&lt;/a&gt; to view the imported contacts.
+  &lt;/p&gt;
+{% else %}
+  &lt;p&gt;
+  Click &lt;a href=&quot;{{ action_url }}&quot; target=&quot;_blank&quot;&gt;here&lt;/a&gt; to view failed records.
+  &lt;/p&gt;
+{% endif %}
+</pre></body></html>

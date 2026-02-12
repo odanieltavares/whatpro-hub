@@ -60,12 +60,12 @@ func (p *AsaasProvider) ParseWebhook(payload []byte) (*models.Transaction, error
 // BillingService handles subscription logic
 type BillingService struct {
 	repo     *repositories.BillingRepository
-	users    *repositories.UserRepository
+	users    repositories.UserRepository
 	provider PaymentProvider
 }
 
 // NewBillingService creates a new BillingService
-func NewBillingService(repo *repositories.BillingRepository, users *repositories.UserRepository, apiKey string) *BillingService {
+func NewBillingService(repo *repositories.BillingRepository, users repositories.UserRepository, apiKey string) *BillingService {
 	return &BillingService{
 		repo:     repo,
 		users:    users,
@@ -76,7 +76,7 @@ func NewBillingService(repo *repositories.BillingRepository, users *repositories
 // SubscribeAccount subscribes an account to a plan
 func (s *BillingService) SubscribeAccount(ctx context.Context, accountID int, planID uuid.UUID, userID uint) (*models.Subscription, error) {
 	// 1. Get User/Owner for billing details
-	user, err := s.users.GetUser(ctx, int(userID))
+	user, err := s.users.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

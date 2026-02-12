@@ -8,7 +8,20 @@ import (
 	"whatpro-hub/internal/repositories"
 )
 
+
+
 // ListUsers handles listing users for an account
+// @Summary List users
+// @Description Get a list of users for a specific account
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Param role query string false "Filter by role"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/users [get]
 func (h *Handler) ListUsers(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
@@ -36,13 +49,29 @@ func (h *Handler) ListUsers(c *fiber.Ctx) error {
 }
 
 // GetUser handles fetching a single user
+// @Summary Get user
+// @Description Get a user by ID
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/users/{id} [get]
 func (h *Handler) GetUser(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid user ID")
 	}
 
-	user, err := h.UserService.GetUser(c.Context(), uint(id))
+	user, err := h.UserService.GetUser(c.Context(), accountID, uint(id))
 	if err != nil {
 		if err == repositories.ErrUserNotFound {
 			return h.Error(c, fiber.StatusNotFound, "User not found")
@@ -56,19 +85,25 @@ func (h *Handler) GetUser(c *fiber.Ctx) error {
 }
 
 // CreateUser handles creating a new user
+// @Summary Create user
+// @Description Create a new user (Agent) in the account
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param accountId path int true "Account ID"
+// @Param user body CreateUserRequest true "User Data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{} "Quota Exceeded"
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/users [post]
 func (h *Handler) CreateUser(c *fiber.Ctx) error {
 	accountID, err := c.ParamsInt("accountId")
 	if err != nil || accountID < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
 	}
 
-	var req struct {
-		Name        string `json:"name" validate:"required"`
-		Email       string `json:"email" validate:"required,email"`
-		Password    string `json:"password" validate:"required,min=8"` // Note: Auth logic might be separate
-		WhatproRole string `json:"whatpro_role" validate:"required,oneof=agent admin super_admin"`
-	}
-
+	var req CreateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid request body")
 	}
@@ -106,19 +141,30 @@ func (h *Handler) CreateUser(c *fiber.Ctx) error {
 }
 
 // UpdateUser handles updating a user
+// @Summary Update user
+// @Description Update user details
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Param user body UpdateUserRequest true "Update Data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/users/{id} [put]
 func (h *Handler) UpdateUser(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid user ID")
 	}
 
-	var req struct {
-		Name               *string `json:"name"`
-		Email              *string `json:"email" validate:"omitempty,email"`
-		WhatproRole        *string `json:"whatpro_role" validate:"omitempty,oneof=agent admin super_admin"`
-		AvailabilityStatus *string `json:"availability_status" validate:"omitempty,oneof=online offline busy"`
-	}
-
+	var req UpdateUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid request body")
 	}
@@ -141,7 +187,7 @@ func (h *Handler) UpdateUser(c *fiber.Ctx) error {
 		updates["availability_status"] = *req.AvailabilityStatus
 	}
 
-	if err := h.UserService.UpdateUser(c.Context(), uint(id), updates); err != nil {
+	if err := h.UserService.UpdateUser(c.Context(), accountID, uint(id), updates); err != nil {
 		if err == repositories.ErrUserNotFound {
 			return h.Error(c, fiber.StatusNotFound, "User not found")
 		}
@@ -149,7 +195,7 @@ func (h *Handler) UpdateUser(c *fiber.Ctx) error {
 	}
 
 	// Fetch updated user
-	user, _ := h.UserService.GetUser(c.Context(), uint(id))
+	user, _ := h.UserService.GetUser(c.Context(), accountID, uint(id))
 
 	h.AuditUpdate(c, "user", fmt.Sprintf("%d", id), nil, updates)
 
@@ -159,13 +205,29 @@ func (h *Handler) UpdateUser(c *fiber.Ctx) error {
 }
 
 // DeleteUser handles deleting a user
+// @Summary Delete user
+// @Description remove a user from the account
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts/{accountId}/users/{id} [delete]
 func (h *Handler) DeleteUser(c *fiber.Ctx) error {
+	accountID, err := c.ParamsInt("accountId")
+	if err != nil || accountID < 1 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
 		return h.Error(c, fiber.StatusBadRequest, "Invalid user ID")
 	}
 
-	if err := h.UserService.DeleteUser(c.Context(), uint(id)); err != nil {
+	if err := h.UserService.DeleteUser(c.Context(), accountID, uint(id)); err != nil {
 		if err == repositories.ErrUserNotFound {
 			return h.Error(c, fiber.StatusNotFound, "User not found")
 		}
@@ -174,7 +236,24 @@ func (h *Handler) DeleteUser(c *fiber.Ctx) error {
 
 	h.AuditDelete(c, "user", fmt.Sprintf("%d", id), nil)
 
-	return h.Success(c, fiber.Map{
-		"message": "User deleted successfully",
-	})
+	return c.JSON(fiber.Map{"message": "User deleted successfully"})
+}
+
+// CreateUserRequest defines the payload for creating a user
+type CreateUserRequest struct {
+	Name         string `json:"name" validate:"required"`
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,min=6"`
+	ChatwootRole string `json:"chatwoot_role"`
+	WhatproRole  string `json:"whatpro_role"`
+}
+
+// UpdateUserRequest defines the payload for updating a user
+type UpdateUserRequest struct {
+	Name         *string `json:"name"`
+	Email        *string `json:"email" validate:"omitempty,email"`
+	Password     *string `json:"password" validate:"omitempty,min=6"`
+	ChatwootRole *string `json:"chatwoot_role"`
+	WhatproRole  *string `json:"whatpro_role"`
+	AvailabilityStatus *string `json:"availability_status"`
 }

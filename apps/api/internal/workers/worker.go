@@ -100,7 +100,7 @@ func (w *Worker) HandleProviderHealth(ctx context.Context, t *asynq.Task) error 
 	unhealthyCount := 0
 
 	for _, provider := range providers {
-		isHealthy, err := w.ProviderService.CheckProviderHealth(ctx, provider.ID)
+		isHealthy, err := w.ProviderService.CheckProviderHealth(ctx, provider.AccountID, provider.ID)
 		if err != nil {
 			w.Logger.Printf("[Worker] Health check error for provider %s: %v", provider.ID, err)
 			unhealthyCount++

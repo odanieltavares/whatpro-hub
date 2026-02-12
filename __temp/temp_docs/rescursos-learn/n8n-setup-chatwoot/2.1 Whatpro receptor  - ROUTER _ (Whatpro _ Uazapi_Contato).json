@@ -1,0 +1,853 @@
+{
+  "name": "2.1 Whatpro receptor  - ROUTER | (Whatpro > Uazapi/Contato)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yib-chatwoot-receptor-TOuazapi-PROD",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        448
+      ],
+      "id": "4a70be68-6e38-4435-ba06-28e8d6e8d7fd",
+      "name": "Webhook",
+      "webhookId": "76ca716c-5996-4778-b8f1-f30a6fd6f7c0"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "={{ $json.switchProcessor.originalEvent }} - {{ $json.switchProcessor.discardReason }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        880
+      ],
+      "id": "e855b561-bf75-4cd4-a78e-ba94de2f907b",
+      "name": "Execution Data"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=Send do processor! ({{ $('Switch Processor').item.json.switchProcessor.eventType }}) - cw_to_uz_queue:{{ $('Webhook').item.json.query.installation_url.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:acc{{ $('Nml - Inbox Event').item.json.extra.accountId }}:i{{ $('Nml - Inbox Event').item.json.extra.contac_inbox.inbox_id }}:{{ $('Nml - Inbox Event').item.json.extra.conversationId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        1984,
+        144
+      ],
+      "id": "bcdc9921-7c0a-42a7-bba8-c061b8fdc939",
+      "name": "Execution Data1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createClient } = require('redis');\n\nvar input = $('Switch Processor').first().json;\n\nconst client = createClient({\n  socket: {\n    host: 'redis',\n    port: 6379\n  },\n  database: 10\n});\n\ntry {\n  await client.connect();\n\n  const queueKey = $('RedisKeys').first().json.queueKey;\n  const lockKey = $('RedisKeys').first().json.lockKey;\n  \n  // Cria o payload com queueKey e lockKey no topo\n  var payload = {\n    queueKey: queueKey,\n    lockKey: lockKey,\n    ...input  // Espalha o resto do input após as chaves\n  };\n\n  //if (!chatId) {\n    //throw new Error('Não foi possível extrair o chatId do input.');\n  //}\n\n  payload = JSON.stringify(payload);\n  //const payload = JSON.stringify(input); // 3. O payload é o input inteiro em string.\n  \n  // Executa o comando RPUSH\n  const pushResult = await client.rPush(queueKey, payload);\n\n  // Anexa o resultado ao input original para passar para o próximo nó\n  //data.rpushResult = `Fila [${queueKey}] agora com ${pushResult} itens.`;\n  $input.item.json.rpushResult = `Fila [${queueKey}] agora com ${pushResult} itens`;\n  \n} catch (error) {\n  throw error;\n} finally {\n  if (client.isOpen) {\n    await client.quit();\n  }\n}\n\n//return [{ json: data }];\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        224
+      ],
+      "id": "516e2854-b4e6-4d9a-9e8a-9e696dde090c",
+      "name": "Redis - Rpush"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createClient } = require('redis');\n\nconst client = createClient({\n  socket: {\n    host: 'redis',\n    port: 6379\n  },\n  database: 10\n});\n\ntry {\n  await client.connect();\n\n  //if (!chatId) {\n    //throw new Error('Não foi possível extrair o chatId do input.');\n  //}\n\n  const lockKey = $('RedisKeys').first().json.lockKey;\n  const expirationInSeconds = 36000; // 10h\n\n  // Tenta criar a trava. Retorna 'OK' se foi criada, ou null se já existia.\n  const lockStatus = await client.set(lockKey, 'running', {\n    NX: true,\n    EX: expirationInSeconds\n  });\n\n  $input.item.json.lockStatus = lockStatus;\n\n} catch (error) {\n  throw error;\n} finally {\n  if (client.isOpen) {\n    await client.quit();\n  }\n}\n\nreturn $input.item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        224
+      ],
+      "id": "6f77cd04-a0ce-4315-bf23-d7afcfc951e9",
+      "name": "Redis - Lock NX"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "423e9228-c3fa-4aab-97c3-3f936028db45",
+              "leftValue": "={{ $('Redis - Lock NX').item.json.lockStatus }}",
+              "rightValue": "OK",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        224
+      ],
+      "id": "8ba8223c-ef7e-4240-9d8c-3fe5400685e9",
+      "name": "Lock Created Now?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2db8d033-d4ea-4bfc-be47-7e6ca4060cdc",
+              "name": "queueKey",
+              "value": "=cw_to_uz_queue:acc{{ $('Nml - Inbox Event').item.json.extra.accountId }}:i{{ $('Nml - Inbox Event').item.json.extra.contac_inbox.inbox_id }}:{{ $('Nml - Inbox Event').item.json.toSend.body.conversation.meta.sender.identifier.split(\"@\")[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "e465a87a-d104-4ee0-b731-c23f3f20c114",
+              "name": "lockKey",
+              "value": "=lock:cw_to_uz_process:acc{{ $('Nml - Inbox Event').item.json.extra.accountId }}:i{{ $('Nml - Inbox Event').item.json.extra.contac_inbox.inbox_id }}:{{ $('Nml - Inbox Event').item.json.toSend.body.conversation.meta.sender.identifier.split(\"@\")[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        224
+      ],
+      "id": "71325f55-dfef-47b2-a9d3-2cf48a4af9cd",
+      "name": "RedisKeys"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('RedisKeys').item.json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        144
+      ],
+      "id": "a2f7391c-5636-489e-9d04-4e37f2875a24",
+      "name": "InputKeys"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        912,
+        32
+      ],
+      "id": "5447aaca-bfbc-4b02-87a3-e3b5b0ab1e9a",
+      "name": "Organizer"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        32
+      ],
+      "id": "9b438c63-ad15-407c-8f08-c6db53e62ef1",
+      "name": "Organizer1"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=WITH LOCK! Rpushed! ({{ $('RedisKeys').first().json.queueKey }})"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        1984,
+        320
+      ],
+      "id": "eb5bfff6-b30d-4c34-93a7-c1a96be54b03",
+      "name": "Just push (no trigger!)"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "da87fc93-2e68-4e18-9d5b-6e77a19c229e",
+                    "leftValue": "={{ $('Switch Processor').item.json.switchProcessor.eventType }}",
+                    "rightValue": "TYPING_EVENT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "typing_event"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a82434d6-9bb2-4c9a-89ac-a09f24e93c0e",
+                    "leftValue": "={{ $('Switch Processor').item.json.switchProcessor.eventType.includes('VALID_OUTGOING') || $('Switch Processor').item.json.switchProcessor.eventType === 'REACTION'  }}",
+                    "rightValue": "VALID_OUTGOING_MESSAGE",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "valid_outgoing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "dadaa8be-ec91-4e7d-b984-5c06c84693c8",
+                    "leftValue": "={{ $('Switch Processor').item.json.switchProcessor.eventType }}",
+                    "rightValue": "DELETED_MESSAGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "deleted_message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1c3ac1f4-5dad-4059-89f1-507792f997c4",
+                    "leftValue": "={{ $('Switch Processor').item.json.switchProcessor.eventType }}",
+                    "rightValue": "SYSTEM_COMMAND",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sys_command"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "68d03412-e249-4a8a-98b9-d3a00c110707",
+                    "leftValue": "={{ $('Switch Processor').item.json.switchProcessor.eventType }}",
+                    "rightValue": "DISCARD",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "discard"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        528,
+        400
+      ],
+      "id": "17529478-1ca6-426a-ad68-eba44b3facf8",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        912,
+        448
+      ],
+      "id": "1369acdc-e851-4d35-9c06-2c31c096b772",
+      "name": "Organizer2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        448
+      ],
+      "id": "b9ed9cce-1a01-4cf7-b2a4-d4f67816f5c6",
+      "name": "Organizer3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2db8d033-d4ea-4bfc-be47-7e6ca4060cdc",
+              "name": "queueKey",
+              "value": "=cw_to_uz_queue:acc{{ $('Nml - Inbox Event').item.json.extra.accountId }}:i{{ $('Nml - Inbox Event').item.json.extra.contac_inbox.inbox_id }}:{{ $('Nml - Inbox Event').item.json.toSend.body.conversation.meta.sender.identifier.split(\"@\")[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "e465a87a-d104-4ee0-b731-c23f3f20c114",
+              "name": "lockKey",
+              "value": "=lock:cw_to_uz_process:acc{{ $('Nml - Inbox Event').item.json.extra.accountId }}:i{{ $('Nml - Inbox Event').item.json.extra.contac_inbox.inbox_id }}:{{ $('Nml - Inbox Event').item.json.toSend.body.conversation.meta.sender.identifier.split(\"@\")[0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        656
+      ],
+      "id": "06aa279d-592a-49cb-a2b3-9ca6e4c32a21",
+      "name": "RedisKeys2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \n...$('RedisKeys2').item.json,\n...$('Switch Processor').item.json\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        656
+      ],
+      "id": "8316870b-45b8-48d5-a41a-bf7b82ad142c",
+      "name": "Merge Keys with Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aaed199a-6998-4e11-87b5-af38796cc16f",
+              "name": "check.body.private",
+              "value": "={{ $('Webhook').item.json.body.private }}",
+              "type": "boolean"
+            },
+            {
+              "id": "93b7814e-2f4c-4eac-87af-2d2fbe50300f",
+              "name": "check.body.conversation.messages[0].source_id",
+              "value": "={{ $('Webhook').item.json.body.conversation.messages[0].source_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1a80a308-2871-45b3-a1c2-f853f093b0c7",
+              "name": "check.body.content_attributes.deleted",
+              "value": "={{ $('Webhook').item.json.body.content_attributes.deleted }}",
+              "type": "boolean"
+            },
+            {
+              "id": "fd0d10c1-e5f1-4a5c-b700-e88acade05f9",
+              "name": "check.body.event",
+              "value": "={{ $('Webhook').item.json.body.event }}",
+              "type": "string"
+            },
+            {
+              "id": "54d5960a-6caa-405b-9084-05ea25d602ea",
+              "name": "toSend.body.conversation.meta.sender.identifier",
+              "value": "={{ $('Webhook').item.json.body.conversation.meta.sender.identifier ?? $('Webhook').item.json.body.conversation.meta.sender.phone_number.replace(/\\D/g, ''); }}",
+              "type": "string"
+            },
+            {
+              "id": "6104d651-152c-4110-92d4-e682cea532cb",
+              "name": "toSend.body.content",
+              "value": "={{ $('Webhook').item.json.body.content }}",
+              "type": "string"
+            },
+            {
+              "id": "9f207a55-68ee-4cdd-92bc-caf527498bdf",
+              "name": "toSend.body.attachments",
+              "value": "={{ $json.body.attachments }}",
+              "type": "array"
+            },
+            {
+              "id": "d59076c3-b915-40b5-8906-48f6eba9006d",
+              "name": "toSend.body.content_attributes.in_reply_to",
+              "value": "={{ $('Webhook').item.json.body.content_attributes.in_reply_to }}",
+              "type": "string"
+            },
+            {
+              "id": "ca92eb77-4058-4552-bf07-eb838866cec4",
+              "name": "toSend.body.conversation.messages[0].sender.available_name",
+              "value": "={{ $('Webhook').item.json.body.conversation.messages[0].sender.available_name }}",
+              "type": "string"
+            },
+            {
+              "id": "2508e313-0538-4f8a-8541-0f542a146cee",
+              "name": "extra.installationUrl",
+              "value": "={{ $('Webhook').item.json.query.installation_url }}",
+              "type": "string"
+            },
+            {
+              "id": "9d7480de-d242-4e5a-a944-86f2ca6d531c",
+              "name": "extra.accountId",
+              "value": "={{ $('Webhook').item.json.body.account?.id || $('Webhook').item.json.body.conversation.messages[0].account_id }}",
+              "type": "number"
+            },
+            {
+              "id": "4d1ab84d-b0f0-4063-bc67-836d2b102539",
+              "name": "extra.contac_inbox.source_id",
+              "value": "={{ $('Webhook').item.json.body.conversation.contact_inbox.source_id }}",
+              "type": "string"
+            },
+            {
+              "id": "33c442e7-424f-44cf-a4b6-ef0a81dbfb19",
+              "name": "extra.contac_inbox.contact_id",
+              "value": "={{ $('Webhook').item.json.body.conversation.contact_inbox.contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "59afcb3e-1ef7-445d-8f56-fee3aff89d1d",
+              "name": "extra.contac_inbox.inbox_id",
+              "value": "={{ $('Webhook').item.json.body.conversation.contact_inbox.inbox_id }}",
+              "type": "number"
+            },
+            {
+              "id": "041f984e-4441-4b77-94fe-2850134a7e1c",
+              "name": "extra.conversationId",
+              "value": "={{ $('Webhook').item.json.body.conversation.id }}",
+              "type": "number"
+            },
+            {
+              "id": "018178b1-dd6b-4b72-aa58-38483bc78ef5",
+              "name": "extra.messageId",
+              "value": "={{ $('Webhook').item.json.body.id }}",
+              "type": "number"
+            },
+            {
+              "id": "b499638b-3a6b-4dc6-8896-d548e8438d68",
+              "name": "extra.contactName",
+              "value": "={{ $('Webhook').item.json.body.conversation.meta.sender.name }}",
+              "type": "string"
+            },
+            {
+              "id": "ff58c632-ebd5-4f55-9302-57003de7c7f6",
+              "name": "sender.type",
+              "value": "={{ $('Webhook').item.json.body.sender.type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        448
+      ],
+      "id": "b625cea6-efb4-4acc-aa04-2e89ed289dd0",
+      "name": "Nml - Inbox Event"
+    },
+    {
+      "parameters": {
+        "jsCode": "/*====================================\n FUNÇÃO AUXILIAR\n Função reutilizável para detectar se um\n texto contém apenas um único emoji.\n====================================*/\nfunction isSingleEmoji(text) {\n  const trimmed = text.trim();\n  const segments = [...new Intl.Segmenter('pt-BR', { granularity: 'grapheme' }).segment(trimmed)];\n\n  if (segments.length !== 1) {\n    return false;\n  }\n\n  // Emojis normais (Extended Pictographic + modificadores/ZWJ)\n  const pictographicRegex = /^(?:\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*)$/u;\n\n  // Keycap sequence (números 0–9, # e *)\n  const keycapRegex = /^([0-9#*]\\uFE0F?\\u20E3)$/u;\n\n  return pictographicRegex.test(trimmed) || keycapRegex.test(trimmed);\n}\n\n\n\n\n/*====================================\n INICIALIZAÇÃO E EXTRAÇÃO DE DADOS\n====================================*/\nconst item = items[0];\n\nconst senderType = item.json.sender?.type;\nconst event = item.json.check?.body?.event;\nconst isPrivate = item.json.check?.body?.private === true;\nconst isDeleted = item.json.check?.body?.content_attributes?.deleted === true;\nconst sourceId = item.json.check?.body?.conversation?.messages?.[0]?.source_id;\nconst content = item.json.toSend?.body?.content;\nconst attachments = item.json.toSend?.body?.attachments;\n// Nova constante para verificar se a mensagem é uma resposta.\nconst isReply = !!item.json.toSend?.body?.content_attributes?.in_reply_to;\n\n// Variáveis para armazenar o resultado do processamento\nlet eventType = '';\nlet discardReason = '';\nlet command = null;\nlet reactionEmoji = null;\n\n\n/*====================================\n LÓGICA DE ROTEAMENTO CORRIGIDA\n====================================*/\n\n// CAMADA 1: Tratamento de Caso Especial (Evento de Typing)\nif ((event === 'conversation_typing_on' || event === 'conversation_typing_off') && !isPrivate) {\n  eventType = 'TYPING_EVENT';\n} else {\n  // Para todos os outros eventos, aplicamos os filtros padrão.\n\n  // CAMADA 2: Filtro de Direção\n  if (senderType !== 'user') {\n    eventType = 'DISCARD';\n    discardReason = 'Event is not typing and is incoming (sender is not user)';\n  } else {\n    // É um evento de 'user' (e não é de typing).\n\n    // CAMADA 3: Filtro de Duplicidade\n    const isWhatsappDuplicate = sourceId && sourceId.split(':')[0] === 'MID';\n    if (isWhatsappDuplicate && !isDeleted) { //Apagadas eu tenho que deixar passar pra conseguir apagar uma mensagem criada no celular pelo Chatwoot\n      eventType = 'DISCARD';\n      discardReason = 'Duplicate event from WhatsApp (source_id starts with MID)';\n    } else {\n      // CAMADA 4: Classificação Final ou Validação de Conteúdo\n      if (event === 'message_created') {\n        const hasTextContent = content && typeof content === 'string' && content.trim() !== '';\n        const hasAttachments = attachments && attachments.length > 0;\n\n        // Descarte prioritário para mensagens de sistema\n        if (hasTextContent && content.startsWith('**SYSTEM:**')) {\n          eventType = 'DISCARD';\n          discardReason = 'Internal system message (starts with *SYSTEM:*)';\n        } else if (isPrivate) {\n          eventType = 'DISCARD';\n          discardReason = 'Message is private';\n        } else if (hasTextContent) {\n          if (content.startsWith('..')) {\n            eventType = 'SYSTEM_COMMAND';\n            command = content.substring(2).trim();\n          } else if (isReply && isSingleEmoji(content.trim())) { // Condição ajustada para incluir a verificação 'isReply'\n            eventType = 'REACTION';\n            reactionEmoji = content.trim(); // Armazena o emoji para ser usado depois\n          } else {\n            // Se tem texto, verificamos se também tem anexo para classificar.\n            eventType = hasAttachments ? 'VALID_OUTGOING_MEDIA' : 'VALID_OUTGOING_TEXT';\n          }\n        } else if (hasAttachments) {\n          // Se só tem anexo (sem texto), é mídia.\n          eventType = 'VALID_OUTGOING_MEDIA';\n        } else {\n          // Mensagem sem texto nem anexo\n          eventType = 'DISCARD';\n          discardReason = 'New message has no content or attachments';\n        }\n\n      } else if (event === 'message_updated' && isDeleted && !isPrivate) {\n        eventType = 'DELETED_MESSAGE';\n      } else {\n        eventType = 'DISCARD';\n        discardReason = 'Unhandled user event type';\n      }\n    }\n  }\n}\n\n\n/*====================================\n MONTAGEM DA SAÍDA\n O objeto 'switchProcessor' agora é montado\n dinamicamente para incluir apenas as chaves relevantes.\n====================================*/\nconst outputItem = { ...item.json };\n\n// Base do objeto de processamento\nconst switchProcessor = {\n  eventType: eventType,\n  originalEvent: event || 'unknown'\n};\nif (eventType === 'DISCARD') {\n  switchProcessor.discardReason = discardReason;\n}\nif (eventType === 'SYSTEM_COMMAND') {\n  switchProcessor.command = command;\n}\nif (eventType === 'REACTION') {\n  switchProcessor.reaction = reactionEmoji;\n}\n\noutputItem.switchProcessor = switchProcessor;\n\nreturn [{\n  json: outputItem\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        448
+      ],
+      "id": "c664532c-1812-4b66-99c8-d86fb86f6fe1",
+      "name": "Switch Processor"
+    },
+    {
+      "parameters": {
+        "content": "# Fonte de entrada para o flow (fonte do Webhook)\n\n## Chatwoot Inbox URL (Mensagens dos agentes e TODOS os eventos da conversa no inbox)!\n### Definição AUTOMÁTICA (ao criar novo inbox) realizada pelo instance controller do Flow 1.2!\n- /yib-chatwoot-receptor-TOuazapi-TEST?installation_url=http... ← 🚨 Link com parâmetro obtido automaticamente da interface de configuração (baserow) da integração para a instância",
+        "height": 272,
+        "width": 832,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "3d8015e7-bb7a-4b7a-b3b3-40e5480a27b7",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## 👇🏼 SELECIONE\n## 👉🏼 Flow 2.2 👈🏼",
+        "height": 272,
+        "width": 208,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1744,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "1a194a0f-b263-42ce-8382-6e6ba4e44742",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "FY9B7gsx4MF1Vm41",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/FY9B7gsx4MF1Vm41",
+          "cachedResultName": "2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1808,
+        144
+      ],
+      "id": "f9c74fc2-40b2-4007-99da-16afdbdc3d83",
+      "name": "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Nml - Inbox Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis - Rpush": {
+      "main": [
+        [
+          {
+            "node": "Redis - Lock NX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis - Lock NX": {
+      "main": [
+        [
+          {
+            "node": "Lock Created Now?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lock Created Now?": {
+      "main": [
+        [
+          {
+            "node": "InputKeys",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Just push (no trigger!)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RedisKeys": {
+      "main": [
+        [
+          {
+            "node": "Redis - Rpush",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InputKeys": {
+      "main": [
+        [
+          {
+            "node": "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizer": {
+      "main": [
+        [
+          {
+            "node": "Organizer1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizer1": {
+      "main": [
+        [
+          {
+            "node": "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Organizer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RedisKeys",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Organizer2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RedisKeys2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execution Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizer2": {
+      "main": [
+        [
+          {
+            "node": "Organizer3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organizer3": {
+      "main": [
+        [
+          {
+            "node": "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RedisKeys2": {
+      "main": [
+        [
+          {
+            "node": "Merge Keys with Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Keys with Data": {
+      "main": [
+        [
+          {
+            "node": "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Inbox Event": {
+      "main": [
+        [
+          {
+            "node": "Switch Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Processor": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '2.2 Whatpro receptor  - MAIN | (Whatpro > Uazapi/Contato)'": {
+      "main": [
+        [
+          {
+            "node": "Execution Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2b4bd21d-0d8c-49b4-aed6-324c6a7ae738",
+  "meta": {
+    "instanceId": "e23f3221c9c13f410dedd6480997c7f1b273c096ebf708d184a8b0c24cf67206"
+  },
+  "id": "AhTcRKUN0Q2cwOAP",
+  "tags": [
+    {
+      "createdAt": "2025-02-06T10:11:38.193Z",
+      "updatedAt": "2025-02-06T10:11:38.193Z",
+      "id": "giucuooCzPVyIkng",
+      "name": "Whatpro"
+    },
+    {
+      "createdAt": "2025-10-17T11:42:11.665Z",
+      "updatedAt": "2025-10-17T11:42:11.665Z",
+      "id": "M533Cwcccnhc2pS9",
+      "name": "Uazapi"
+    }
+  ]
+}

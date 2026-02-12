@@ -28,14 +28,16 @@ func (s *AuthService) CreateSession(userID, accountID int, ip, userAgent string)
 
 	// 2. Create Session Record
 	session := &models.Session{
-		UserID:       userID,
+		UserID:       uint(userID),
 		AccountID:    accountID,
 		RefreshToken: refreshToken, 
 		IPAddress:    ip,
 		UserAgent:    userAgent,
 		ExpiresAt:    time.Now().Add(7 * 24 * time.Hour), // 7 days expiration
-		LastSeenAt:   time.Now(),
+		LastSeenAt:   nil, // Handled by pointer logic if needed, or set to Now
 	}
+	now := time.Now()
+	session.LastSeenAt = &now
 
 	if err := s.SessionRepo.Create(session); err != nil {
 		return nil, "", err

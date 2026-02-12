@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset='utf-8'><title>mailers/agent_notifications/conversation_notifications_mailer/conversation_mention.liquid</title></head><body><pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>&lt;p&gt;Hi {{user.available_name}}, &lt;/p&gt;
+
+&lt;p&gt;You&#x27;ve been mentioned in a conversation. &lt;b&gt;{{message.sender_display_name}}&lt;/b&gt; wrote:&lt;/p&gt;
+&lt;blockquote style=&quot;box-sizing:border-box; padding:8px 16px; margin:0 0 20px; font-size:14px; border-left:5px solid #eeeeee&quot;&gt;
+  {{message.text_content}}
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;b&gt;Previous messages:&lt;/b&gt;&lt;/p&gt;
+{% for chat_message in conversation.recent_messages %}
+  &lt;div&gt;
+    &lt;h4 style=&quot;margin: 0;&quot;&gt;
+      {% if chat_message.sender == user.available_name %}
+        You
+      {% else %}
+        {{chat_message.sender}}
+      {% endif %}
+    &lt;/h4&gt;
+  &lt;/div&gt;
+
+  &lt;div style=&quot;padding: 10px 20px; margin: 5px 0 20px 0; background: #F2F3F7; border-radius: 10px; display: inline-block; font-family: &#x27;Helvetica Neue&#x27;,Tahoma,Arial,sans-serif; text-align: start; unicode-bidi: plaintext;&quot;&gt;
+    {% if chat_message.content %}
+      {{chat_message.content}}
+    {% endif %}
+
+    {% if chat_message.attachments %}
+      {% for attachment in chat_message.attachments %}
+        Attachment [&lt;a href=&quot;{{ attachment }}&quot; _target=&quot;blank&quot;&gt;Click here to view&lt;/a&gt;]
+      {% endfor %}
+    {% endif %}
+  &lt;/div&gt;
+{% endfor %}
+&lt;p&gt;
+  &lt;a href=&quot;{{ action_url }}&quot;&gt;View Message&lt;/a&gt;
+&lt;/p&gt;
+</pre></body></html>

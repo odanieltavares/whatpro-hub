@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"whatpro-hub/internal/models"
 	"whatpro-hub/internal/repositories"
 )

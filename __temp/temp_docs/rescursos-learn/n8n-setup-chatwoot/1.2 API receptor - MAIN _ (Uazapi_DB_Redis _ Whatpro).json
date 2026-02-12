@@ -1,0 +1,4709 @@
+{
+  "name": "1.2 API receptor - MAIN | (Uazapi/DB/Redis > Whatpro)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        1776
+      ],
+      "id": "0b747490-438c-407a-9625-43fe123c791c",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "073177c9-992a-423e-a9e2-cb2042e8e6cc",
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.eventType }}",
+                    "rightValue": "=messages",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "messages"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.eventType }}",
+                    "rightValue": "=messages_update",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "573badeb-53f1-4540-8f8b-7fc10122e710"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "messages_update"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2752,
+        1792
+      ],
+      "id": "529bfff9-9cd3-4bb1-861f-a18e3387b6be",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "29933430-de0f-47d5-ad7c-3b03ab55bae7",
+              "leftValue": "={{ $('Get Instance Chatwoot Data').item.json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1776
+      ],
+      "id": "2db097c4-2cf3-4444-8bfd-01b0bced322d",
+      "name": "No data?"
+    },
+    {
+      "parameters": {
+        "databaseId": "={{ 2 }}",
+        "tableId": "={{ 2 }}",
+        "returnAll": true,
+        "additionalOptions": {
+          "filters": {
+            "fields": [
+              {
+                "field": "={{ 3 }}",
+                "value": "={{ $('Workflow Trigger').item.json.body.token }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        1536
+      ],
+      "id": "c1a47b34-3a07-4f22-b14a-b88b226d9a4f",
+      "name": "Get Instance&Chatwoot Data",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=api:instance:{{ $('Workflow Trigger').item.json.body.token }}",
+        "value": "={{ $('Nml - Instance Chatwoot Data1').item.json.toJsonString() }}",
+        "expire": true,
+        "ttl": 2592000
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        1536
+      ],
+      "id": "090c3990-04b7-4b64-920c-17c6e60768ff",
+      "name": "Set Instance TTL 30D",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=api:instance:{{ $('Normalizer Baserow Data').item.json.instanceToken }}",
+        "value": "={{ $json.toJsonString() }}",
+        "expire": true,
+        "ttl": 2592000
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        1024
+      ],
+      "id": "b16fa40b-2c2c-4378-a2e7-7614850ea093",
+      "name": "Set Instance TTL 30D1",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=api:instance:{{ $('Workflow Trigger').item.json.body.old_items[0][\"Instance Token\"] }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        1008
+      ],
+      "id": "1b06117c-ecac-48a7-aeb8-b017ae25b842",
+      "name": "Delete Instance Key",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "data",
+        "key": "={{ $('Redis Instance Key').item.json.instanceKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        688,
+        1776
+      ],
+      "id": "d6ed5608-2784-42ef-92d1-7266f205b0df",
+      "name": "Get Instance Chatwoot Data",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.old_items[0].Instances",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        1200
+      ],
+      "id": "18d50ca9-5e58-4edd-b655-ce21c8e0c1bc",
+      "name": "Instâncias a serem editadas"
+    },
+    {
+      "parameters": {
+        "jsCode": "// O baserow data pode ser 1. o próprio payload do webhook enviado pelo Baserow, ou 2. o fruto da contulta (switch fallback)!\n\n// Passar os dados do webhook pra cá pode até parecer redundante,\n// mas estamos padronizando o payload para o próximo node!\n\nconst instanceLine = $('Workflow Trigger').item.json.body.items[0];\n\nlet multipleRows = null;\nif ($('Get InstanceSS Rows').isExecuted) {\n  multipleRows = $('Get InstanceSS Rows').item.json || $json;\n}\n\n\n\n// Não posso assumir que porque webhookk tem items (ele terá nos dois casos, a questão é edição em uma outra linha não vai ter determinados campos). Precisamos verificar se webhookData tem a estrutura esperada (pelo menos uma das propriedades da tabela de instâncias)\nconst sourceData = (instanceLine && instanceLine[\"Instance Name\"]) ? instanceLine : multipleRows;\n\n\n// Normalizando os dados\nconst normalizedData = {\n  instanceName: sourceData[\"Instance Name\"],\n  instanceUrl: sourceData[\"Instance Url\"],\n  instanceToken: sourceData[\"Instance Token\"],\n  installationUrl: sourceData[\"Chatwoot URL\"][0].value,\n  accountName: sourceData[\"Chatwoot Account (SET!)\"][0].value,\n  accountId: sourceData[\"Chatwoot Account Id\"][0].value,\n  userName: sourceData[\"Chatwoot User Name\"][0].value,\n  userToken: sourceData[\"User Token\"][0].value,\n  inboxId: sourceData[\"Inbox Id 🚨\"],\n  inboxStatus: sourceData[\"Inbox Status\"].value\n};\n\n// Retorna os dados normalizados\nreturn normalizedData;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        1008
+      ],
+      "id": "c0e5af03-52e5-4983-a651-136ebb1a6f01",
+      "name": "Normalizer Baserow Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Código JavaScript para N8N - Comparação de Payloads\nconst payload = $('Workflow Trigger').item.json.body;\n\n// Validação inicial - verifica se os arrays existem\nif (!payload || !payload.items || !payload.old_items) {\n  return [{ \n    json: {\n      error: \"Payload inválido - items ou old_items não encontrados\",\n      payload_received: payload \n    }\n  }];\n}\n\n// Verifica se os arrays estão vazios\nif (payload.items.length === 0 && payload.old_items.length === 0) {\n  return [{ \n    json: {\n      message: \"Nenhum item para comparar - arrays vazios\" \n    }\n  }];\n}\n\nfunction compareObjects(newObj, oldObj, path = '') {\n  const changes = [];\n  \n  // Função auxiliar para comparar valores profundamente\n  function deepEqual(a, b) {\n    if (a === b) return true;\n    if (a == null || b == null) return false;\n    if (typeof a !== typeof b) return false;\n    \n    if (Array.isArray(a) && Array.isArray(b)) {\n      if (a.length !== b.length) return false;\n      for (let i = 0; i < a.length; i++) {\n        if (!deepEqual(a[i], b[i])) return false;\n      }\n      return true;\n    }\n    \n    if (typeof a === 'object' && typeof b === 'object') {\n      const keysA = Object.keys(a);\n      const keysB = Object.keys(b);\n      if (keysA.length !== keysB.length) return false;\n      \n      for (let key of keysA) {\n        if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {\n          return false;\n        }\n      }\n      return true;\n    }\n    \n    return false;\n  }\n  \n  // Compara todas as propriedades do objeto novo\n  for (const key in newObj) {\n    const currentPath = path ? `${path}.${key}` : key;\n    const newValue = newObj[key];\n    const oldValue = oldObj[key];\n    \n    if (!deepEqual(newValue, oldValue)) {\n      changes.push({\n        property: currentPath,\n        old_value: oldValue,\n        new_value: newValue\n      });\n    }\n  }\n  \n  // Verifica propriedades que existiam no objeto antigo mas não no novo\n  for (const key in oldObj) {\n    if (!(key in newObj)) {\n      const currentPath = path ? `${path}.${key}` : key;\n      changes.push({\n        property: currentPath,\n        old_value: oldObj[key],\n        new_value: undefined\n      });\n    }\n  }\n  \n  return changes;\n}\n\nfunction findChangesInItems(items, oldItems) {\n  const allChanges = [];\n  \n  // Compara cada item com seu correspondente em old_items\n  for (let i = 0; i < Math.max(items.length, oldItems.length); i++) {\n    const newItem = items[i];\n    const oldItem = oldItems[i];\n    \n    if (!newItem && oldItem) {\n      // Item foi removido\n      allChanges.push({\n        item_index: i,\n        item_id: oldItem.id,\n        change_type: 'item_removed',\n        property: 'entire_item',\n        old_value: oldItem,\n        new_value: null\n      });\n    } else if (newItem && !oldItem) {\n      // Item foi adicionado\n      allChanges.push({\n        item_index: i,\n        item_id: newItem.id,\n        change_type: 'item_added',\n        property: 'entire_item',\n        old_value: null,\n        new_value: newItem\n      });\n    } else if (newItem && oldItem) {\n      // Compara propriedades do item\n      const itemChanges = compareObjects(newItem, oldItem);\n      \n      itemChanges.forEach(change => {\n        allChanges.push({\n          change_type: 'property_changed',\n          ...change\n        });\n      });\n    }\n  }\n  \n  return allChanges;\n}\n\n// Executa a comparação\nconst changes = findChangesInItems(payload.items, payload.old_items);\n\n// Estrutura a saída como array de objetos individuais (estilo n8n)\nconst outputArray = [];\n\nchanges.forEach(change => {\n  if (change.change_type === 'property_changed') {\n    outputArray.push({\n      json: {\n        property: change.property,\n        old: change.old_value,\n        new: change.new_value\n      }\n    });\n  }\n});\n\n// Retorna array de mudanças - cada uma como item separado\nreturn outputArray.length > 0 ? outputArray : [{ \n  json: { \n    message: \"Nenhuma mudança detectada\" \n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1088
+      ],
+      "id": "3b63daf1-6d73-4a5f-b9ed-22eed4b2a4eb",
+      "name": "Filter Baserow Change"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2a4395f0-63c6-4c79-b5aa-cf5ebb482c50",
+              "leftValue": "={{ $('Workflow Trigger').item.json.body.old_items[0][\"Inbox Id 🚨\"] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        496
+      ],
+      "id": "fa388b9f-1006-4f47-81bb-7be854c6fa23",
+      "name": "Coluna Inbox Id preenchida?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2a4395f0-63c6-4c79-b5aa-cf5ebb482c50",
+              "leftValue": "={{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Status\"].value }}",
+              "rightValue": "active",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        208
+      ],
+      "id": "13c4c7af-751d-4dae-9c66-2dd52c593d18",
+      "name": "Coluna Status como active?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot URL\"][0].value }}/api/v1/accounts/{{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot Account Id\"][0].value }}/inboxes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"User Token\"][0].value }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1408,
+        336
+      ],
+      "id": "044be93d-3ece-439d-a6bc-cbec8e7e5e9b",
+      "name": "Obtém inboxes",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "90a840d1-ac7f-42fe-a1f9-79bf6c551573",
+              "leftValue": "={{ $('Search Inbox Id').item.json.found }}",
+              "rightValue": "={{ (typeof $('Filter Baserow Change').item.json.new === 'object') ? $('Workflow Trigger').item.json.body.items[0][\"Inbox Id 🚨\"].toNumber() : $('Filter Baserow Change').item.json.new.toNumber() }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1776,
+        336
+      ],
+      "id": "8211ae1a-7294-411d-949a-358f8996df1c",
+      "name": "Existe esse inbox ID?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "result",
+        "key": "={{ $('Workflow Trigger').item.json.body.old_items[0][\"Chatwoot URL\"][0].value.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:acc{{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot Account Id\"][0].value }}:instanceRow:{{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        288
+      ],
+      "id": "636b79ba-979d-4bed-84b2-6daf673d01fc",
+      "name": "Get Cache Lock Inbox Id Change",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Workflow Trigger').item.json.body.old_items[0][\"Chatwoot URL\"][0].value.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:acc{{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot Account Id\"][0].value }}:instanceRow:{{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "value": "=true",
+        "expire": true,
+        "ttl": 6
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        464
+      ],
+      "id": "5646d5c4-530f-42f0-a68b-d5e15def1f44",
+      "name": "SET Cache Lock Inbox Id Change 6s",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2512,
+        464
+      ],
+      "id": "41197532-58af-4743-b10e-2c978dad0745",
+      "name": "Wait 6s",
+      "webhookId": "5e7858f0-bd4b-4586-b385-a3beef5b311b"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ✅ As mensagens da instância com o token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\" chegarão no Inbox com o ID {{ $('Create a Inbox (Run once!!)').item.json.id }}\n\nÚltimo evento: Inbox ID definido mas não localizado. O inbox {{ $('Create a Inbox (Run once!!)').item.json.id }} foi criado!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        464
+      ],
+      "id": "8097255e-d260-499c-b675-16bc2f95e574",
+      "name": "Log",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6a4bfa60-ad3a-4ba4-8b1b-99474fb9cebf",
+                    "leftValue": "={{ $('Filter Baserow Change').item.json.error }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Payload inválido"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "42f75d1c-0bde-4624-b26e-0da09c305ed4",
+                    "leftValue": "={{ $('Filter Baserow Change').item.json.property }}",
+                    "rightValue": "Inbox Id",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Inbox ID"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Filter Baserow Change').item.json.property }}",
+                    "rightValue": "Inbox Status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "bdd96b14-8b4a-4ef7-8ed0-ae9ce882ffb9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "=Inbox Status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c303fa20-7771-4c85-b180-453a813419c6",
+                    "leftValue": "={{ $('Filter Baserow Change').item.json.property }}",
+                    "rightValue": "(Instance Name|Instance Token|Instance Url)",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "=Token|Url|Nome"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        384,
+        1040
+      ],
+      "id": "114aeb9f-c792-4e9f-a0cc-975b16ed8e6e",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ba14fb57-76a5-46db-90ac-516be828d418",
+              "leftValue": "={{ $('Get Cache Lock Inbox Id Change').item.json.result === null ? false : $('Get Cache Lock Inbox Id Change').item.json.result.parseJson() }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        288
+      ],
+      "id": "8f2fbf75-495f-4632-87ea-b99a165c3dec",
+      "name": "Locked?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        128
+      ],
+      "id": "13207751-c446-40d9-b9c6-d2558d09b133",
+      "name": "Esfria a cuca... (Trash Webhook)"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=api:instance:{{ $('Get InstanceSS Rows').item.json['Instance Token'] }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        1200
+      ],
+      "id": "5293f186-d434-44eb-9bb1-918a4c866641",
+      "name": "Delete Instance Key (ItemSS!)",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}\n",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ❌ O Inbox ID \"{{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Id 🚨\"] }}\" não receberá as mensagens desta instância (token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\")\n\nÚltimo evento: Inbox Status definido como \"inactive\"!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        816,
+        464
+      ],
+      "id": "73d065e6-2bac-4e8e-96a5-6035fe00b31a",
+      "name": "Remove this.inboxId from this.key",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "97da2f32-9ad4-4ff9-8b54-6a777cd04187",
+              "leftValue": "={{ $('Filter Baserow Change').item.json.new }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        64
+      ],
+      "id": "3bb909a9-b65b-420c-865c-1e401e339576",
+      "name": "New Value = Empty?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "97da2f32-9ad4-4ff9-8b54-6a777cd04187",
+              "leftValue": "={{ (typeof $('Filter Baserow Change').item.json.new === 'object') ? ($('Filter Baserow Change').item.json.new ? $('Filter Baserow Change').item.json.new.value : \"inactive\") : $('Filter Baserow Change').item.json.new }}",
+              "rightValue": "inactive",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        480
+      ],
+      "id": "8d2311f2-0c1e-4998-8023-fd30858fe893",
+      "name": "New Value = Inactive?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}\n",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ❌ As mensagens desta instância (token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\") não serão enviadas para o Chatwoot!\n\nÚltimo evento: O valor de Inbox ID foi apagado (o valor era \"{{ $('Filter Baserow Change').item.json.old }}\")!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        864,
+        48
+      ],
+      "id": "746ad157-7515-41d9-bad5-421e10c11e50",
+      "name": "Deactivate this.inboxId from this.key",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot URL\"][0].value }}/api/v1/accounts/{{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot Account Id\"][0].value }}/inboxes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"User Token\"][0].value }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"name\": \"{{ $('Workflow Trigger').item.json.body.old_items[0][\"Instance Name\"] }}\",\n  \"channel\": {\n    \"type\": \"api\",\n    \"webhook_url\": \"{{ $env.WEBHOOK_URL }}webhook/yib-chatwoot-receptor-TOuazapi-PROD?installation_url={{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot URL\"][0].value }}\"\n  }  \n}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        464
+      ],
+      "id": "63fbe5dc-7161-4e39-84fd-1337f022d888",
+      "name": "Create a Inbox (Run once!!)",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Workflow Trigger').item.json.body.old_items[0][\"Chatwoot URL\"][0].value.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:acc{{ $('Workflow Trigger').item.json.body.items[0][\"Chatwoot Account Id\"][0].value }}:instanceRow:{{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "value": "=true",
+        "expire": true,
+        "ttl": 6
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        144
+      ],
+      "id": "be0b6206-a135-4581-bc9b-a79cc35f1f99",
+      "name": "SET Cache Lock Inbox Id Change 6s1",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_inbox_id }}",
+              "fieldValue": "={{ $('Create a Inbox (Run once!!)').item.json.id }}"
+            },
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Criando Inbox..."
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        2384,
+        464
+      ],
+      "id": "7d30ed0c-d9f1-4915-a42d-1712d42d8957",
+      "name": "Set new inbox Id & Wait Message",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb2d53c2-58a6-4f7e-84ed-baf92274e68d",
+              "name": "inboxId",
+              "value": "={{ $('Filter Baserow Change').item.json.new.toNumber() }}",
+              "type": "number"
+            },
+            {
+              "id": "5062b3c8-8a51-431a-ac24-8e7afc80237f",
+              "name": "inboxStatus",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Status\"].value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        48
+      ],
+      "id": "65fdf647-ad5f-4081-821b-247ac32ccdfe",
+      "name": "INBOX ID AND SATUS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb2d53c2-58a6-4f7e-84ed-baf92274e68d",
+              "name": "inboxId",
+              "value": "={{ $('Workflow Trigger').item.json.body.old_items[0][\"Inbox Id 🚨\"].toNumber() }}",
+              "type": "number"
+            },
+            {
+              "id": "5062b3c8-8a51-431a-ac24-8e7afc80237f",
+              "name": "inboxStatus",
+              "value": "={{ $('Filter Baserow Change').item.json.new ? $('Filter Baserow Change').item.json.new.value : \"inactive\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        464
+      ],
+      "id": "d5a4e7c9-4299-441b-a558-5af75e8e1551",
+      "name": "INBOX ID AND SATUS1"
+    },
+    {
+      "parameters": {
+        "content": "# Instance Controller ______________________ Ativa/Desativa/Cria/Edita Inbox",
+        "height": 80,
+        "width": 2912,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        48,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "74bc625d-d7f0-4e02-b9ad-d969b89ece54",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}",
+        "rowId": "={{ $('Instâncias a serem editadas').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        1200
+      ],
+      "id": "179fe42f-66f2-4095-a279-f5f7b92c0e77",
+      "name": "Get InstanceSS Rows",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb2d53c2-58a6-4f7e-84ed-baf92274e68d",
+              "name": "inboxId",
+              "value": "={{ $('Create a Inbox (Run once!!)').item.json.id }}",
+              "type": "number"
+            },
+            {
+              "id": "5062b3c8-8a51-431a-ac24-8e7afc80237f",
+              "name": "inboxStatus",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Status\"].value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2768,
+        464
+      ],
+      "id": "adc67d0b-9705-4531-b9a8-b221b995d8b1",
+      "name": "INBOX ID AND SATUS3"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1728,
+        944
+      ],
+      "id": "0826ca88-91db-4628-b82c-1f2019468938",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtém o array de inboxes do payload\nconst inboxes = $('Obtém inboxes').item.json.payload;\n\n// Obtém o ID para comparação\nconst targetId = (typeof $('Filter Baserow Change').item.json.new === 'object') \n  ? Number($('Workflow Trigger').item.json.body.items[0][\"Inbox Id 🚨\"]) \n  : Number($('Filter Baserow Change').item.json.new);\n\n// Filtra apenas inboxes do tipo \"Channel::Api\" e procura pelo ID correspondente\nconst foundInbox = inboxes\n  .filter(inbox => inbox.channel_type === \"Channel::Api\")\n  .find(inbox => inbox.id === targetId);\n\n// Retorna o resultado\nif (foundInbox) {\n  return {\n    found: true,\n    id: foundInbox.id,\n    name: foundInbox.name,\n    channel_id: foundInbox.channel_id\n  };\n} else {\n  return {\n    found: false,\n    id: null,\n    name: null,\n    channel_id: null\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        336
+      ],
+      "id": "5f5a1645-5a49-4563-8bac-21f23591e6fc",
+      "name": "Search Inbox Id"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb2d53c2-58a6-4f7e-84ed-baf92274e68d",
+              "name": "inboxId",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Id 🚨\"].toNumber() }}",
+              "type": "number"
+            },
+            {
+              "id": "5062b3c8-8a51-431a-ac24-8e7afc80237f",
+              "name": "inboxStatus",
+              "value": "={{ $('Workflow Trigger').item.json.body.items[0][\"Inbox Status\"].value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2368,
+        144
+      ],
+      "id": "8f0a384a-1b5c-48fc-a05a-4ae1ae205c7f",
+      "name": "INBOX ID AND SATUS4"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ✅ As mensagens desta instância (token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\") chegarão no Inbox com o ID \"{{ (typeof $('Filter Baserow Change').item.json.new === 'object') ? $('Workflow Trigger').item.json.body.items[0]['Inbox Id 🚨'] : $('Filter Baserow Change').item.json.new }}\"!\n\nÚltimo evento: {{ $('Filter Baserow Change').item.json.property.includes('Inbox Status') ? 'Inbox Status alterado para \"active\"!' : 'Inbox ID definido manualmente, localizado e selecionado com sucesso!' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        144
+      ],
+      "id": "fc71154a-4bf6-4653-a1be-786519428384",
+      "name": "Update And Log1",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}\n",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ❌ As mensagens da instância (token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\") não serão enviadas para o Chatwoot!\n\nÚltimo evento: Inbox Status definido como ativo mas Inbox Id não preenchido!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        144,
+        496
+      ],
+      "id": "f7ef2e3c-d5ab-482a-8125-9ea3682bfa05",
+      "name": "Status puro, sem ID, não significa nada!",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}\n",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "=Status: ❌ As mensagens da instância (token \"{{ $('Workflow Trigger').item.json.body.items[0][\"Instance Token\"].split('-')[0] }}...\") não serão enviadas para o Chatwoot!\n\nÚltimo evento: Inbox Id alterado mas Inbox Status inativo!"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        144,
+        208
+      ],
+      "id": "898b62ee-3e61-4327-90b6-61e600f80029",
+      "name": "Coluna status inactive fazemos nada!",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/contacts/{{ $('Nml - Contact id').isExecuted ? $('Nml - Contact id').item.json.id : $('Mrg - contactCvs data').item.json.id }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5024,
+        688
+      ],
+      "id": "084d17da-11bb-491e-9566-f55cbcc5c1ba",
+      "name": "Get contact conversations",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput",
+      "notes": "{{ $('Normalized Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Normalized Instance Chatwoot Data').item.json.accountId }}/contacts/{{ $('Contact Data').item.json.id }}/conversations"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations/{{ $('Mrg - contactCvs data').item.json.cvsId }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    {{\n      (() => {\n          const data = $('Nml - Webhook Data').item.json;\n          let content;\n          \n          // Verificar se precisa adicionar prefixo para mensagem citada indisponível\n          const isExecuted = $('Get messageId by instanzeId').isExecuted;\n          const cwMessageId = isExecuted ? $('Get messageId by instanzeId').item.json.cw_message_id : null;\n          const stanzaId = isExecuted ? $('Get messageId by instanzeId').item.json.stanza_id : null;\n          const shouldAddPrefix = isExecuted && (cwMessageId === undefined || stanzaId === undefined);\n          \n          if (data.deleted) {\n              content = \"`👆🏼❌ Deletada no aplicativo!`\";\n          } else if (data.edited) {\n              content = '`👆🏼 Mensagem editada:`\\n\\n' + data.text;\n          } else if (data.reaction) {\n              content = '`' + data.text + '`';\n          }\n          else {\n              content = data.text;\n          }\n          \n          // Adicionar prefixo se necessário\n          if (shouldAddPrefix) {\n              content = \"`Mensagem citada indisponível`\\n\\n\" + content;\n          }\n          \n          return '\"content\": ' + content.toJsonString() + ',';\n      })()\n    }}\n    \"message_type\": \"{{ $('Nml - Webhook Data').item.json.cwMessageType }}\",\n    \"source_id\": \"{{ $('Nml - Webhook Data').item.json.messageId ?? `MID:DEL${Math.random().toString(36).substring(2, 12)}` }}\"\n    {{\n        (() => {\n            const isExecuted = $('Get messageId by instanzeId').isExecuted;\n            if (!isExecuted) return '';\n            \n            const cwMessageId = $('Get messageId by instanzeId').item.json.cw_message_id;\n            const stanzaId = $('Get messageId by instanzeId').item.json.stanza_id;\n            \n            // Só exibir content_attributes se ambos os valores existem e não são undefined\n            if (cwMessageId !== undefined && stanzaId !== undefined) {\n                return ',\"content_attributes\": {' +\n                '\"in_reply_to\": ' + cwMessageId + ',' +\n                '\"in_reply_to_external_id\": \"' + stanzaId + '\"' +\n                '}';\n            }\n            \n            return '';\n        })()\n    }}\n    {{\n      ($('Workflow Trigger').item.json.switchProcessor.eventType.includes(\"SYSTEM_MESSAGE\")\n        ? `,\"private\": true`\n        : ''\n      )\n    }}\n}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5296,
+        1728
+      ],
+      "id": "cc95a945-2618-4a3d-9a13-5ba960ccec53",
+      "name": "Create message",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations/{{ $('Mrg - contactCvs data').item.json.cvsId }}/messages/{{ $('Mrg - Create message (cmnt)').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"delivered\"}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6624,
+        1648
+      ],
+      "id": "f70cc367-f3f6-4229-bee8-4f197e264b09",
+      "name": "Message status - Delivered1",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations/{{ $('Create conversation').item.json.id }}/messages/{{ $('Create conversation').item.json.messages[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"delivered\"}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7136,
+        688
+      ],
+      "id": "e3ff5f84-710d-40e4-bcad-50ba322059d3",
+      "name": "Message status - Delivered",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('Get Instance Chatwoot Data').item.json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        1792
+      ],
+      "id": "fd15cbff-5adb-4ecc-871f-f1148f67b7b8",
+      "name": "Nml - Instance Chatwoot Cached Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bb0d40ca-ad03-408a-adda-a43695a923f6",
+              "name": "instanceToken",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Instance Token\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "b273f70f-82ac-44d8-a0c6-fcd6ddf5910d",
+              "name": "installationUrl",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Chatwoot URL\"][0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "813ddae0-512a-435f-b492-fac784684c7f",
+              "name": "accountName",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Chatwoot Account (SET!)\"][0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "f0bdc8eb-48b8-496e-9336-e4a9089f19d1",
+              "name": "accountId",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Chatwoot Account Id\"][0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "d83081dd-c0d3-499c-ac57-90616b3b1768",
+              "name": "userName",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Chatwoot User Name\"][0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "0ddcc2e5-c741-4370-a455-27dc6ede53bb",
+              "name": "userToken",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"User Token\"][0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "c05e1c5e-1f42-4e45-a796-a6780a915fcf",
+              "name": "inboxId",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Inbox Id 🚨\"] }}",
+              "type": "number"
+            },
+            {
+              "id": "f74aed3f-98ce-46ef-b32a-fe42f342f558",
+              "name": "inboxStatus",
+              "value": "={{ $('Get Instance&Chatwoot Data').item.json[\"Inbox Status\"].value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        1536
+      ],
+      "id": "4ce2c805-5bd7-4b16-877e-42e05931ddbf",
+      "name": "Nml - Instance Chatwoot Data1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        1792
+      ],
+      "id": "1baca49a-e6eb-436f-82be-7db7c51e5c4e",
+      "name": "Merge - Instance Chatwoot Data"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Nml - Webhook Data').item.json.messageId }}",
+        "value": "={\"id\":{{ $('Mrg - Create message (cmnt)').item.json.id }},\"status\":\"delivered\",\"cvsId\":{{ $('Mrg - contactCvs data').item.json.cvsId }}}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        6816,
+        1648
+      ],
+      "id": "466057a4-25a1-494c-9a79-d62777d4d696",
+      "name": "Cache Message As Delivered1",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const apiBody = $('Workflow Trigger').item.json.body;\nconst switchProcessor = $('Workflow Trigger').item.json.switchProcessor;\nconst payload = {};\n\n// Função para processar vCard e extrair informações de contato\nfunction processVCard(vCardString) {\n    const vCardData = vCardString.split('\\n');\n    const contactInfo = {};\n    \n    vCardData.forEach((line) => {\n        const [key, value] = line.split(':');\n        if (key && value) {\n            contactInfo[key] = value;\n        }\n    });\n    \n    return contactInfo;\n}\n\n// Função para formatar um contato individual\nfunction formatSingleContact(contactInfo, displayName) {\n    const name = displayName || contactInfo['FN'];\n    let formattedContact = `📞 *${name}*\\n`;\n    \n    // Coletar todos os números de telefone\n    const phoneNumbers = [];\n    Object.keys(contactInfo).forEach((key) => {\n        if (key.startsWith('item') && key.includes('TEL')) {\n            phoneNumbers.push(contactInfo[key]);\n        } else if (key.includes('TEL') && !key.startsWith('item')) {\n            phoneNumbers.push(contactInfo[key]);\n        }\n    });\n    \n    // Formatação diferente para 1 ou múltiplos números\n    if (phoneNumbers.length === 1) {\n        formattedContact += `└ ${phoneNumbers[0]}`;\n    } else if (phoneNumbers.length > 1) {\n        phoneNumbers.forEach((phone, index) => {\n            const isLast = index === phoneNumbers.length - 1;\n            const prefix = isLast ? '└' : '├';\n            formattedContact += `${prefix} ${phone}`;\n            if (!isLast) formattedContact += '\\n';\n        });\n    }\n    \n    return formattedContact;\n}\n\n/*====================================\nCOMMON FISRT PROPERTY\n====================================*/\npayload.eventType = apiBody.EventType;\n\n/*====================================\nPROCESSA MESSAGE_UPDATEDS\n====================================*/\nif (payload.eventType === 'messages_update') {\n  payload.type = apiBody.type;\n  \n  /*============\n  DELETADAS: não tratamos como updated... Convertemos para \"messages\" seguindo o caminho normal para fazermos a \"Citação\" de delção.\n  ============*/\n  if (apiBody.type === 'DeletedMessage') { // Poderia ser apiBody.event.Type === 'Deleted', os dois são iguais!\n    payload.eventType = 'messages';\n    payload.cwMessageType = apiBody.event.IsFromMe ? \"outgoing\" : \"incoming\";\n    payload.contentType = 'deletion'; //Estou criando esse type para padronizar\n    payload.deleted = true; \n    payload.deletedId = apiBody.event.MessageIDs[0]; //Como é updatedd vem ddentro de IDs no plural, mas vem apenas uma por vez (ÓTIMO!)!\n  }\n\n  /*============\n  STATUS UPDATE: Todos os eventos que recebemos aqui de update são atualização de status (se não for o deleted de cima, obviamente)\n  ============*/\n  // Adiciona o status da mensagem\n  if (apiBody.state) { //Todos os eventos de update tem essa propriedade, exceto o event.Type: \"retry\"! Que eu vou cortar logo no Router.\n    switch(apiBody.state) {\n      case \"Delivered\":\n        payload.status = \"sent\";\n        break;\n      case \"Read\":\n        payload.status = \"read\";\n        break;\n      default:\n        payload.status = \"Status desconhecido\";\n    }\n    payload.messageIds = apiBody.event.MessageIDs?.map(id => `MID:${id}`) || []; //Para todos os IDS adicionamos nosso prefixo\n  }\n  \n  payload.contactData = {\n    chatId: apiBody.event.Chat,\n    phoneNumber: apiBody.event.Chat?.split('@')[0] || null\n  };\n\n  \n/*====================================\nPROCESSA EVENTO \"messages\" (só mandamos para cá esses messages e messages_update, por isso um simples else e não case)\n====================================*/\n} else { \n  const apiBodyMessage = apiBody.message;\n  // Não precisamos: if (apiBodyMessage) { ← Sempre teremos body message!\n  payload.wasSentByApi = apiBodyMessage.wasSentByApi;\n  payload.cwMessageType = apiBodyMessage.fromMe ? \"outgoing\" : \"incoming\";\n\n  //Amtes do bug de normalização eu usava essa simplificada.\n  // BUG: A Uazapi em alguns casos de mensagens de mídia (QR code que enviei pela Evo pelo Typebot) simplesmente mandou a mensagem de mídia com o type \"text\", mesmo tendo conteúdo de imagem (mediaType: \"image\")! Então tô fazenod agora uma verificação direta dessa propriedade como fallback.\n  //let apiBodyMessageType = apiBodyMessage.messageType === 'ExtendedTextMessage' \n    //? 'text' \n    //: apiBodyMessage.type; //text/reaction/media\n  //payload.contentType = apiBodyMessageType;\n\n  let apiBodyMessageType;\n  if (apiBodyMessage.messageType === 'ExtendedTextMessage' || apiBodyMessage.messageType === 'Conversation') { //Nesse caso a Uazapi PARA ALGUNS payloads não normaliza o apiBodyMessage.type como sendo \"text\", talvez puramente por bug (como no caso do anuncio de facebook vs instagram), ou por ter cenários complexos, mas... EU vou normalizar como texto normal visto que até agora só lidei com cenários onde, apesar de ser Extended (mensagem de texto normal que vem como Extented por algum motivo, mensagem de anúncio), recebemos normalizado na propriedade text o conteúdo.\n    // 'Conversation' (gerada pea api da Evo!) também tá vindo sem o type como text.\n    apiBodyMessageType = 'text';\n  } else if (apiBodyMessage.mediaType && apiBodyMessage.mediaType !== '') {\n    apiBodyMessageType = 'media';\n  } else {\n    apiBodyMessageType = apiBodyMessage.type; // text/reaction/media\n  }\n  payload.contentType = apiBodyMessageType;\n\n  \n  /*============\n  TODOS DAS PROPRIEDADES DE TODAS AS MENSAGENS QUE IMPLICAM EM MARCAÇÃO (CONSULTA DE stanzaId).\n  ============*/\n  if (apiBodyMessage.edited) { // Se tem conteúdo\n    payload.edited = !!apiBodyMessage.edited; // Convertemos para booleano\n    payload.editedId = apiBodyMessage.edited // Propriedade extra para o valor\n  }\n  if (apiBodyMessage.reaction) {\n    payload.reaction = !!apiBodyMessage.reaction\n    payload.reactionId = apiBodyMessage.reaction\n  }\n  if (apiBodyMessage.quoted) {\n    payload.quoted = !!apiBodyMessage.quoted;\n    payload.quotedId = apiBodyMessage.quoted; // Está vindo normalizado aqui, mas a propriedade \"oficial\" seria essa: content?.contextInfo?.stanzaID\n    payload.contextInfo = apiBodyMessage.content?.contextInfo || {} // Dados \"extras\" já que o que nos inporta é o quoted id que pegamos acima.\n  }\n\n  payload.source = apiBodyMessage.source;\n  payload.messageId = apiBodyMessage.messageid ? `MID:${apiBodyMessage.messageid}` : null; //null para system messages (minha constraint para corrigir duplicadas na evo não funciona com ''.)\n  \n  // Dados de Contato\n  payload.contactData = {\n    chatId: apiBodyMessage.chatid,\n    lid: apiBodyMessage.sender_lid,\n    phoneNumber: apiBodyMessage.chatid?.split('@')[0] || null,\n    senderName: apiBodyMessage.senderName || apiBody.chat?.wa_name || \"Contato sem nome\"\n  };\n\n  /*============\n  MESSAGE TYPE TEXT (Types: Conversation/Extended/Reaction)\n  ============*/\n  if (apiBodyMessageType === 'text' || apiBodyMessageType === 'reaction') {\n    payload.text = apiBodyMessage.text || apiBodyMessage.content.text; //Em eventos de mensagem editada a uazapi já mandou payload sem o text preenchido!\n  }\n  \n  /*============\n  MESSAGE TYPE AD REPLY (RESPOSTA DE ANÚNCIO)\n  ============*/\n  // Verifica se a mensagem é uma resposta a um anúncio pela existência do objeto externalAdReply\n  if (apiBodyMessage.content?.contextInfo?.externalAdReply) {\n    const contextInfo = apiBodyMessage.content.contextInfo;\n    const adReply = contextInfo.externalAdReply;\n  \n    // Extrai as informações relevantes\n    const clientMessage = apiBodyMessage.text;\n    const adTitle = adReply.title;\n    const adBody = adReply.body;\n    const adUrl = adReply.sourceURL;\n  \n    // --- LÓGICA DE ORIGEM ATUALIZADA ---\n    // 1. Define a plataforma [Facebook/Instagram]\n    const platformApp = (contextInfo.entryPointConversionApp || adReply.sourceApp || 'Desconhecida').replace(/^\\w/, c => c.toUpperCase());\n    \n    // 2. Extrai os detalhes ricos para o colchete [sourceType - entryPointConversationSource]\n    const adSourceType = adReply.sourceType || 'empty'; // ex: 'ad' ou 'post'\n    const conversionSource = contextInfo.entryPointConversionSource || 'empty'; // ex: 'ctwa_ad' ou 'post_cta'\n  \n    // Monta a mensagem final com a nova estrutura de origem\n    let formattedText = `🎯 **NOVO LEAD - META ADS**\\n`;\n    formattedText += `┌─────────────────────────┐\\n`;\n    formattedText += `│ 📍 *Origem:* ${platformApp}\\n`;\n    formattedText += `│ *Src Type:* ${adSourceType}\\n`;\n    formattedText += `│ *Src:* ${conversionSource}\\n`;\n    formattedText += `└─────────────────────────┘\\n`;\n  \n    formattedText += `┌─────────────────────────┐\\n`;\n    formattedText += `│ *Ads Name:* **${adTitle}**\\n`;\n    formattedText += `│ *Ads Link:* ${adUrl}\\n`;\n    formattedText += `└─────────────────────────┘\\n`;\n\n    formattedText += `\\n**Texto do Anúncio:**\\n`;\n    if (adBody && adBody.trim()) {\n      \n      const formattedAdBody = adBody.split('\\n').map(line => `> ${line}`).join('\\n');\n      formattedText += `${formattedAdBody}\\n`;\n    } else {\n      formattedText += `> Anúncio sem texto\\n`;\n    }\n    \n    //formattedText += `\\n• • • • • • • • • • • •\\n`;\n    formattedText += `\\n💬 **Mensagem do Lead:** \\n${clientMessage}`;\n  \n    payload.text = formattedText.trim();\n    payload.contactData.senderName = `Sem nome - Meta Ads [${platformApp}]`\n    //payload.contentType = 'text'; // Garantimos que será tratado como uma mensagem de texto\n  }\n\n  /*============\n  MESSAGE TYPE TEMPLATE (MENSAGEM INTERATIVA COM BOTÕES)\n  ============*/\n  if (apiBodyMessage.messageType === 'TemplateMessage') {\n    const template = apiBodyMessage.content.hydratedTemplate;\n    const templateContent = template.hydratedContentText || '';\n    const buttons = template.hydratedButtons || [];\n    \n    let formattedText = '📋 **MENSAGEM INTERATIVA**\\n';\n    formattedText += '┌─────────────────────────┐\\n';\n    formattedText += '│ 🤖 *Tipo:* Template Message\\n';\n    formattedText += `│ 🆔 *ID:* ${apiBodyMessage.content.templateID}\\n`;\n    formattedText += '└─────────────────────────┘\\n\\n';\n    \n    // Conteúdo principal da mensagem\n    if (templateContent.trim()) {\n      formattedText += '📄 **Conteúdo:**\\n';\n      const formattedContent = templateContent.split('\\n').map(line => `  ${line}`).join('\\n');\n      formattedText += `${formattedContent}\\n\\n`;\n    }\n    \n    // Botões disponíveis\n    if (buttons.length > 0) {\n      formattedText += '🔘 **Opções Disponíveis:**\\n';\n      buttons.forEach((button, index) => {\n        const isLast = index === buttons.length - 1;\n        const prefix = isLast ? '└' : '├';\n        const hydratedButton = button.HydratedButton;\n        const buttonNumber = index + 1;\n        \n        // Quick Reply Button (botão de resposta rápida)\n        if (hydratedButton?.QuickReplyButton) {\n          const quickReply = hydratedButton.QuickReplyButton;\n          formattedText += `${prefix} **Botão ${buttonNumber}** 💬 ${quickReply.displayText}\\n`;\n          if (quickReply.ID && quickReply.ID !== quickReply.displayText) {\n            formattedText += `${isLast ? '  ' : '│ '}    ↳ ID: ${quickReply.ID}\\n`;\n          }\n        }\n        \n        // URL Button (botão de link/site)\n        else if (hydratedButton?.UrlButton) {\n          const urlButton = hydratedButton.UrlButton;\n          formattedText += `${prefix} **Botão ${buttonNumber}** 🌐 ${urlButton.displayText}\\n`;\n          formattedText += `${isLast ? '  ' : '│ '}    ↳ ${urlButton.URL}\\n`;\n        }\n        \n        // Call Button (botão de chamada)\n        else if (hydratedButton?.CallButton) {\n          const callButton = hydratedButton.CallButton;\n          formattedText += `${prefix} **Botão ${buttonNumber}** 📞 ${callButton.displayText}\\n`;\n          formattedText += `${isLast ? '  ' : '│ '}    ↳ ${callButton.phoneNumber}\\n`;\n        }\n        \n        // Copy Code Button (botão de copiar código)\n        else if (hydratedButton?.CopyCodeButton) {\n          const codeButton = hydratedButton.CopyCodeButton;\n          formattedText += `${prefix} **Botão ${buttonNumber}** 📋 ${codeButton.displayText}\\n`;\n          formattedText += `${isLast ? '  ' : '│ '}    ↳ Código: ${codeButton.copyCode}\\n`;\n        }\n        \n        // MPM/Flow Action Button (botões de ação/fluxo)\n        else if (hydratedButton?.FlowActionButton) {\n          const flowButton = hydratedButton.FlowActionButton;\n          formattedText += `${prefix} **Botão ${buttonNumber}** ⚡ ${flowButton.displayText}\\n`;\n          if (flowButton.flowToken) {\n            formattedText += `${isLast ? '  ' : '│ '}    ↳ Flow: ${flowButton.flowToken}\\n`;\n          }\n        }\n        \n        // Botão desconhecido ou não implementado\n        else {\n          const buttonText = Object.keys(hydratedButton)[0] || `Tipo desconhecido`;\n          formattedText += `${prefix} **Botão ${buttonNumber}** ❓ ${buttonText} (tipo não reconhecido)\\n`;\n        }\n      });\n    }\n    \n    payload.text = formattedText.trim();\n    payload.contentType = 'text'; // Convertemos para texto para o Chatwoot\n  }\n  \n  /*============\n  MESSAGE TYPE VCARD (CONTATO ÚNICO)\n  ============*/\n  if (apiBodyMessage.mediaType === 'vcard') {\n    const contactInfo = processVCard(apiBodyMessage.content.vcard);\n    payload.text = formatSingleContact(contactInfo, apiBodyMessage.content.displayName);\n    payload.contentType = 'text'; // Convertemos para texto para o Chatwoot\n  }\n\n  /*============\n  MESSAGE TYPE CONTACT_ARRAY (MÚLTIPLOS CONTATOS)\n  ============*/\n  if (apiBodyMessage.mediaType === 'contact_array') {\n    const contactCount = apiBodyMessage.content.contacts.length;\n    const formattedContacts = apiBodyMessage.content.contacts.map((contact) => {\n        const contactInfo = processVCard(contact.vcard);\n        return formatSingleContact(contactInfo, contact.displayName);\n    });\n    \n    const header = `👥 *${contactCount} ${contactCount === 1 ? 'Contato' : 'Contatos'} Compartilhado${contactCount === 1 ? '' : 's'}*\\n\\n`;\n    const separator = '\\n\\n• • • • • • • • • • • •\\n\\n';\n    payload.text = header + formattedContacts.join(separator);\n    payload.contentType = 'text'; // Convertemos para texto para o Chatwoot\n  }\n\n  /*============\n  MESSAGE TYPE LOCATION / LIVE LOCATION\n  ============*/\n  if (apiBodyMessage.mediaType === 'location' || apiBodyMessage.mediaType === 'livelocation') {\n    const latitude = apiBodyMessage.content.degreesLatitude;\n    const longitude = apiBodyMessage.content.degreesLongitude;\n  \n    // VERIFICA SE É LOCALIZAÇÃO EM TEMPO REAL PARA MUDAR O TÍTULO\n    const isLive = apiBodyMessage.mediaType === 'livelocation';\n    const title = isLive \n      ? '📍 *Localização em Tempo Real*' \n      : '📍 *Localização Compartilhada*';\n  \n    // Construindo o link do Google Maps que funciona universalmente\n    const mapsLink = `http://googleusercontent.com/maps/google.com/1{latitude},${longitude}`;\n    \n    // Formatando o texto da mensagem de forma clara e amigável\n    let formattedText = `${title}\\n\\n`; // Usa o título dinâmico\n    formattedText += `*Latitude:* ${latitude}\\n`;\n    formattedText += `*Longitude:* ${longitude}\\n\\n`;\n    formattedText += `🗺️ *Ver no mapa:*\\n${mapsLink}`;\n    \n    payload.text = formattedText;\n    payload.contentType = 'text'; // Convertemos para texto para ser exibido corretamente\n  }\n  \n  /*============\n  MESSAGE TYPE MEDIA\n  ============*/\n  if (apiBodyMessageType === 'media' && !['vcard', 'contact_array'].includes(apiBodyMessage.mediaType)) { //A negação é pra não entrar aqui mensagem de contato que o Whatsapp considera mídia mas nós tratamos como texto.\n    payload.content = {\n      mediaType: apiBodyMessage.mediaType,\n      messageType: apiBodyMessage.messageType,\n      mimeType: apiBodyMessage.content.mimetype,\n      url: apiBodyMessage.content.URL,\n      caption: apiBodyMessage.content.caption\n    };\n  }\n\n  payload.idWithOwner = apiBodyMessage.id; //Common\n}\n\n/*====================================\nCOMMON LATEST PROPERTIES\n====================================*/\nif (apiBody.owner) { // Indica quem gerou o evento. Vai ser meu próprio núemero em fromMe ou o do cliente. \n  payload.owner = apiBody.owner\n}\n\npayload.isGroup = apiBody.event?.IsGroup || false;\n\nif (switchProcessor) {\n  payload.switchProcessor = switchProcessor.eventType;\n}\n\nreturn payload;"
+      },
+      "name": "Nml - Webhook Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        1792
+      ],
+      "alwaysOutputData": true,
+      "id": "063a41ec-c756-4267-bca2-d24f9b5e5afe"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Uazapi - Generate media Link').item.json.fileURL }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5488,
+        2288
+      ],
+      "id": "1cc450d6-b6c3-4605-8bb3-521ecf84987b",
+      "name": "Get Binary File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Importa o cliente Redis\nconst { createClient } = require('redis');\n\n// --- Configurações ---\nconst webhookData = $('Nml - Webhook Data').item.json;\nconst chatwootConfig = $('Merge - Instance Chatwoot Data').item.json;\n\nconst messageIds = webhookData.messageIds;\nconst newStatus = webhookData.status;\nconst TTL_SECONDS = 86400;\n\n// Configurações de retentativa para a MENSAGEM PRINCIPAL\nconst RETRY_ATTEMPTS = 20;\nconst RETRY_DELAYS_MS = {\n    image: 500,\n    audio: 500,\n\tptt: 500,\n    document: 1000,\n\tvideo: 600,\n\tdefault: 250 \n};\n\n// NOVIDADE: Configurações de retentativa para a busca do TIPO da mensagem \nconst TYPE_CHECK_RETRY_ATTEMPTS = 6; // Menos tentativas, pois deve ser mais rápido\nconst TYPE_CHECK_RETRY_DELAY_MS = 350; // Um delay curto e fixo para a busca do tipo\n\n// --- Conexão com o Redis ---\nconst client = createClient({\n\tsocket: {\n\t\thost: 'redis',\n\t\tport: 6379\n\t},\n\tdatabase: 10\n});\nclient.on('error', (err) => console.log('Redis Client Error', err));\nawait client.connect();\n\n// --- Lógica Principal ---\nconst processedResults = [];\nconst summaryLines = [];\nconst typeCheckLog = {}; \nconst baseUrlPattern = `${chatwootConfig.installationUrl}/api/v1/accounts/${chatwootConfig.accountId}/conversations/{cvsId}/messages/{msgId}`; //Apenas string para debug.\n\n// Itera sobre o array de messageIds\nfor (const messageId of messageIds) {\n\tlet cachedMessageRaw = null;\n\tlet cachedMessage = null;\n    let messageType = null;\n\n\t// ETAPA 1: Buscar o TIPO da mensagem com seu próprio loop de retentativa\n\tconst typeKey = `${messageId}:TYPE`;\n    for (let i = 0; i < TYPE_CHECK_RETRY_ATTEMPTS; i++) {\n        messageType = await client.get(typeKey);\n        if (messageType) break; // Se encontrou, sai do loop.\n\n        // Se não encontrou, espera um pouco antes da próxima tentativa\n        if (i < TYPE_CHECK_RETRY_ATTEMPTS - 1) {\n            await new Promise(resolve => setTimeout(resolve, TYPE_CHECK_RETRY_DELAY_MS));\n        }\n    }\n    \n    // Registra o resultado final da busca pelo tipo (seja ele qual for)\n    typeCheckLog[typeKey] = messageType;\n\n\t// ETAPA 2: Determinar o delay de retentativa para a mensagem principal\n\tconst retryDelay = RETRY_DELAYS_MS[messageType] || RETRY_DELAYS_MS.default;\n\n\t// ETAPA 3: Tentar buscar o objeto principal da mensagem\n\tfor (let i = 0; i < RETRY_ATTEMPTS; i++) {\n\t\tcachedMessageRaw = await client.get(messageId);\n\t\tif (cachedMessageRaw) break;\n\t\t\n\t\tif (i < RETRY_ATTEMPTS - 1) {\n\t\t\tawait new Promise(resolve => setTimeout(resolve, retryDelay));\n\t\t}\n\t}\n\n\t// ETAPA 4: Prosseguir com o processamento normal da mensagem...\n\tif (!cachedMessageRaw) {\n\t\tconst errorMsg = `Não encontrado no cache após ${RETRY_ATTEMPTS} tentativas (delay: ${retryDelay}ms/tipo: ${messageType || 'não def.'}).`;\n\t\tprocessedResults.push({ messageId, status: 'error', error: errorMsg });\n\t\tsummaryLines.push(`${messageId}: Falha (Cache)`);\n\t\tcontinue;\n\t}\n\n\ttry {\n\t\tconst cleanedJsonString = cachedMessageRaw.replace(/\\\\/g, '');\n\t\tcachedMessage = JSON.parse(cleanedJsonString);\n\t} catch (e) {\n\t\tconst errorMsg = `Falha ao parsear JSON do Redis: ${e.message}`;\n\t\tprocessedResults.push({ messageId, status: 'error', error: errorMsg, rawValue: cachedMessageRaw });\n\t\tsummaryLines.push(`${messageId}: Falha (JSON)`);\n\t\tcontinue;\n\t}\n\n\t// Validações\n\tif (!cachedMessage.id || !cachedMessage.cvsId) {\n\t\tconst errorMsg = \"Dados do cache incompletos. 'id' ou 'cvsId' não encontrados.\";\n\t\tprocessedResults.push({ messageId, status: 'error', error: errorMsg, cachedMessage });\n\t\tsummaryLines.push(`${messageId}: Falha (Dados incompletos)`);\n\t\tcontinue;\n\t}\n\n\tif (cachedMessage.status === newStatus) {\n\t\tconst infoMsg = `Evento \"${newStatus}\" duplicado. Nenhuma ação tomada.`;\n\t\tprocessedResults.push({ messageId, status: 'duplicate', info: infoMsg });\n\t\tsummaryLines.push(`${messageId}: Duplicado`);\n\t\tcontinue;\n\t}\n\n\t// NOVO: Proteção para não atualizar mensagens que já estão com status \"read\"\n\tif (cachedMessage.status === 'read') {\n\t\tconst infoMsg = `Mensagem já está com status \"read\". Atualização bloqueada para evitar regressão.`;\n\t\tprocessedResults.push({ messageId, status: 'blocked', info: infoMsg });\n\t\tsummaryLines.push(`${messageId}: Bloqueado (read)`);\n\t\tcontinue;\n\t}\n\n\t// ETAPA 5: Atualizar a API do Chatwoot\n\tconst url = `${chatwootConfig.installationUrl}/api/v1/accounts/${chatwootConfig.accountId}/conversations/${cachedMessage.cvsId}/messages/${cachedMessage.id}`;\n\ttry {\n\t\tconst dataToCache = { ...cachedMessage, status: newStatus };\n\t\tawait client.set(messageId, JSON.stringify(dataToCache), { EX: TTL_SECONDS });\n\n\t\tconst options = {\n\t\t\tmethod: 'PATCH',\n\t\t\theaders: { 'api_access_token': chatwootConfig.userToken, 'Content-Type': 'application/json' },\n\t\t\tbody: { status: newStatus },\n\t\t\tjson: true,\n\t\t\turl: url,\n\t\t\tallowUnauthorizedCerts: true,\n\t\t};\n\n\t\tconst response = await this.helpers.httpRequest(options);\n\t\tconst infoMsg = `Status atualizado para \"${newStatus}\" com sucesso.`;\n\t\tprocessedResults.push({ messageId, status: 'success', info: infoMsg, url, apiResponse: response });\n\t\tsummaryLines.push(`${messageId}: ${newStatus}`);\n\n\t} catch (error) {\n\t\tconst errorMsg = `Falha na API do Chatwoot: ${JSON.stringify(error, null, 2)}`;\n\t\tprocessedResults.push({ messageId, status: 'error', url, error: errorMsg });\n\t\tsummaryLines.push(`${messageId}: Falha (API)`);\n\t}\n}\n\n// Fecha a conexão com o Redis\nawait client.quit();\n\n// Retorna o objeto final estruturado\nreturn {\n\tsummary: `${messageIds.length} mensagens processadas: ${summaryLines.join(' | ')}`,\n\tbaseUrlPattern: baseUrlPattern,\n\ttypeCheckLog: typeCheckLog,\n\tresults: processedResults\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3168,
+        1680
+      ],
+      "id": "c1633149-453b-46fc-8a3d-c4bff9fec9e0",
+      "name": "Messages Status Updater"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "={{ $('Messages Status Updater').item.json.summary }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        3376,
+        1680
+      ],
+      "id": "9f4c8dba-ed0d-444a-a9eb-11f40369043f",
+      "name": "Execution Data5"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  {{\n    ($('Find OR Create contact v0.2').isExecuted && $('Find OR Create contact v0.2').item.json.result == 'created_new' ) ? `\"source_id\": \"${$('Find OR Create contact v0.2').item.json.payload.contact_inboxes[0].source_id}\",` : ($('Nml - cached contactCvs').isExecuted \n      ? `\"source_id\": \"${$('Nml - cached contactCvs').item.json.source_id}\",`\n      : '')\n  }}\n  \"inbox_id\": {{ $('Merge - Instance Chatwoot Data').item.json.inboxId }},\n  \"contact_id\": {{ $('Nml - Contact id').isExecuted ? $('Nml - Contact id').item.json.id : $('Mrg - contactCvs data').item.json.id }}\n\n}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6320,
+        1008
+      ],
+      "id": "d0b9a5e7-0c4f-49ac-aed7-f743575876d7",
+      "name": "Create conversation (media - without message)",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8a237508-4e1c-4703-8c76-6006dceb65bc",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.cwMessageType }}",
+              "rightValue": "outgoing",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6912,
+        768
+      ],
+      "id": "6530879c-fa8f-438d-b5ea-81f4fc7f670d",
+      "name": "Outgoing?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        6000,
+        480
+      ],
+      "id": "73ed02e2-a546-4823-a9bd-1c5d2614e89e",
+      "name": "Limit 1 (first = most recent)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7d575d87-99c5-4ec8-a7d6-ded8ebe48a07",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.contentType }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6064,
+        896
+      ],
+      "id": "a8fd2ad7-2a73-47a1-953d-5dbf0bb302a0",
+      "name": "Text message?",
+      "executeOnce": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5520,
+        1728
+      ],
+      "id": "5cc31b9c-0711-465a-bf9f-a0d7b6f097d6",
+      "name": "Mrg - Create message (cmnt)",
+      "notes": "Pode receber "
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  {{\n    ($('Find OR Create contact v0.2').isExecuted && $('Find OR Create contact v0.2').item.json.result == 'created_new' ) ? `\"source_id\": \"${$('Find OR Create contact v0.2').item.json.payload.contact_inboxes[0].source_id}\",` : ($('Nml - cached contactCvs').isExecuted \n      ? `\"source_id\": \"${$('Nml - cached contactCvs').item.json.source_id}\",`\n      : '')\n  }}\n  \"inbox_id\": {{ $('Merge - Instance Chatwoot Data').item.json.inboxId }},\n  \"contact_id\": {{ $('Nml - Contact id').isExecuted ? $('Nml - Contact id').item.json.id : $('Mrg - contactCvs data').item.json.id }},\n  \"message\": {\n    \"content\": {{ $('Nml - Webhook Data').item.json.text.toJsonString() }},\n    \"message_type\": \"{{ $('Nml - Webhook Data').item.json.cwMessageType }}\",\n    \"source_id\": \"{{ $('Nml - Webhook Data').item.json.messageId }}\"\n  }\n}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6320,
+        768
+      ],
+      "id": "9f2fe72a-800a-4b6f-bafe-3464ceed4bbb",
+      "name": "Create conversation",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a13f614e-4df1-4944-9acc-e3ef52588669",
+              "leftValue": "={{ $('Get contact conversations').item.json.error.message }}",
+              "rightValue": "=Resource could not be found",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5264,
+        688
+      ],
+      "id": "b8f18cd5-5adf-4c85-b5df-576f3940a326",
+      "name": "Resource (CONTACT) not found?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a13f614e-4df1-4944-9acc-e3ef52588669",
+              "leftValue": "={{ $('Mrg - Create message (cmnt)').item.json.error.message }}",
+              "rightValue": "=Resource could not be found",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5952,
+        1728
+      ],
+      "id": "e5043042-5bfe-4a6f-b081-5c573e8de95f",
+      "name": "Resource (CVS) not found?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Nml - Instance Chatwoot Cached Data').item.json.instanceUrl }}/message/download",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.instanceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{ $('Nml - Webhook Data').item.json.messageId.split('MID:')[1] }}\",\n  \"generate_mp3\": true\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5296,
+        2288
+      ],
+      "id": "cb1460c5-55ea-4957-90b9-fd48f189add2",
+      "name": "Uazapi - Generate media Link"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Erro persistente de \"Resource not found\" na criação da conversa (NECESSÁRIO AVERIGUAR O CONTEXTO DA OCORRRÊNCIA)!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        5440,
+        352
+      ],
+      "id": "77302297-fc3a-4812-b2a7-f54e7e153b16",
+      "name": "Não deveria ser permanente"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ae6c7db5-dc94-4b33-b04f-6a2ccfe16861",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5264,
+        432
+      ],
+      "id": "fc725adc-26e9-41b3-91d2-ecaf448d1fbc",
+      "name": "Turn back (2ª tentativa?)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ae6c7db5-dc94-4b33-b04f-6a2ccfe16861",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5952,
+        1520
+      ],
+      "id": "c06f1ade-2b67-4b7d-a265-99297497085f",
+      "name": "Turn back (2ª tentativa?)1"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Erro persistente de \"Resource not found\" na criação da conversa (NECESSÁRIO AVERIGUAR O CONTEXTO DA OCORRRÊNCIA)!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        6144,
+        1456
+      ],
+      "id": "fc2308b6-07a9-4ab5-9081-32f2664c07b2",
+      "name": "Não deveria ser permanente1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        6784,
+        1856
+      ],
+      "id": "766543fc-6d03-4312-a041-b5865492c886",
+      "name": "Recebidas não mudam de status1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        7136,
+        864
+      ],
+      "id": "88f6fbce-3f3e-4393-b2fb-36ceca5a6d97",
+      "name": "Recebidas não mudam de status"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"id\": {{ $('Find OR Create contact v0.2').item.json.payload.id }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4288,
+        880
+      ],
+      "id": "748b4f89-10b3-45f0-b83a-5bf4dbd4978e",
+      "name": "Nml - Contact id"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $('Get cached contactCvs').item.json.result }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4112,
+        1120
+      ],
+      "id": "e62aa99d-e733-4158-b5ae-333672f4df06",
+      "name": "Nml - cached contactCvs"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "result",
+        "key": "={{ $('Redis Keys').item.json.contactKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3648,
+        1104
+      ],
+      "id": "4595e85c-d176-4e72-941c-6af056afdb01",
+      "name": "Get cached contactCvs",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"id\": $('Mrg - contactCvs data').isExecuted ? $('Mrg - contactCvs data').item.json.id : $('Nml - Contact id').item.json.id,\n    \"source_id\": $('Limit 1 (first = most recent)').item.json.messages[0].conversation.contact_inbox.source_id,\n    \"cvsId\": $('Limit 1 (first = most recent)').item.json.id,\n    \"cvsStatus\": \"open\"\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6176,
+        480
+      ],
+      "id": "08c1ffe9-7e65-4148-9e62-a9f588016d97",
+      "name": "Nml - contactCvs Data"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Redis Keys').item.json.contactKey }}",
+        "value": "={{ $('Nml - contactCvs Data').item.json.toJsonString() }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        6352,
+        480
+      ],
+      "id": "a71acfdd-99e9-4c67-b04d-72fdfbfe503c",
+      "name": "Cache contactCvs",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Redis Keys').item.json.contactKey }}",
+        "value": "={{ $('Nml - contactCvs to cache').item.json.toJsonString() }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        6704,
+        768
+      ],
+      "id": "4d885a3e-5b64-4c3f-a1d4-0284ca946e87",
+      "name": "Cache contactCvs1",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Nml - Webhook Data').item.json.messageId }}",
+        "value": "={\"id\":{{ $('Create conversation').item.json.messages[0].id }},\"status\":\"delivered\",\"cvsId\":{{ $('Nml - contactCvs to cache').item.json.cvsId }}}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        7328,
+        688
+      ],
+      "id": "1a264d42-20ce-446e-ab14-cd37023e2ff8",
+      "name": "Cache message (As Delivered!)",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Find OR Create contact v0.2').item.json.result }}",
+                    "rightValue": "found",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "ef1fef59-8eb7-4440-8c01-11a703228433"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "found"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "dfc1ab3a-4d22-4d71-9e87-7db68511f442",
+                    "leftValue": "={{ $('Find OR Create contact v0.2').item.json.result }}",
+                    "rightValue": "created_new",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "created"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        4464,
+        880
+      ],
+      "id": "d30a3916-def3-434e-9f13-9ca00bde0460",
+      "name": "Result Contact Search"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4752,
+        1120
+      ],
+      "id": "efa76dab-6e55-4f3b-8098-240646da9514",
+      "name": "Mrg - contactCvs data",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Get cached contactCvs').item.json.result }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "53b0384b-687a-4fa6-a3a3-55f3c5da85ac"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No Cache..."
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "66afef94-220e-4bf9-9229-a84c16bb97a9",
+                    "leftValue": "={{ $('Get cached contactCvs').item.json.result }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cached!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        3840,
+        1104
+      ],
+      "id": "c7b03508-4655-48e5-8b1c-3eac73cd343c",
+      "name": "Result Cache Search"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"id\": $('Nml - Contact id').isExecuted ? $('Nml - Contact id').item.json.id : $('Mrg - contactCvs data').item.json.id,\n    \"source_id\": $('Create conversation').item.json.messages[0].conversation.contact_inbox.source_id,\n    \"cvsId\": $('Create conversation').item.json.id,\n    \"cvsStatus\": \"open\"\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6512,
+        768
+      ],
+      "id": "348c7015-b98a-4204-ae65-353677d01ae8",
+      "name": "Nml - contactCvs to cache"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "Erro desconhecido ao enviar arquivo"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        6464,
+        2304
+      ],
+      "id": "a77bf5e2-16a7-4109-92de-c9b241bdd09d",
+      "name": "Execution Data1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ typeof $('Create message (with attachment) (cmnt)').item.json.error !== \"object\" ? $('Create message (with attachment) (cmnt)').item.json.error : '' }}",
+                    "rightValue": "=expects the node's input data to contain a binary file",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "440c3f50-4250-4d09-8649-cff172b57c8f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Not Binary"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "aa097c8a-b44c-4cc2-b90e-5951a85a56fc",
+                    "leftValue": "={{ typeof $('Create message (with attachment) (cmnt)').item.json.error !== \"object\" ? $('Create message (with attachment) (cmnt)').item.json.error : '' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Unknown error"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        6176,
+        2304
+      ],
+      "id": "e44b76cf-3716-46da-91b3-256c9265b96f",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.content.mimeType }}",
+                    "rightValue": "plain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "97b57ec8-e019-4d3e-8b7a-142659ab27d1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "txt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "534837f8-0c57-4346-af4f-98a6bb231fdb",
+                    "leftValue": "={{ $('Uazapi - Generate media Link').item.json.fileURL }}",
+                    "rightValue": ".json",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "json"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        5680,
+        2272
+      ],
+      "id": "5bd1a9c4-108f-4a7f-9e07-5e965d2e63e6",
+      "name": "Txt"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "Payload espelho da tabela de relacionamento do Baserow"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        928
+      ],
+      "id": "d16ce171-da49-44ca-9f48-198fa7368a1e",
+      "name": "Error - Payload lixo do baserow lookup"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "42773931-4d3b-422e-94d9-a6e5f5ff3aa7",
+              "leftValue": "={{ $('Mrg - Inbox Result').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        1008
+      ],
+      "id": "3e52738e-fe8b-4c01-abda-b5db7d221dfb",
+      "name": "Alteração no status do inbox?"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.installationUrl.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:token:acc{{ $json.accountId }}:i{{ $json.inboxId }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        1024
+      ],
+      "id": "58e1b33e-49b8-441a-9bff-1987aadd19cc",
+      "name": "Delete Inbox Token Cache",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "❌ Inbox Desativado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        2336,
+        2032
+      ],
+      "id": "6352ee32-d189-49fb-9cd7-394437fdbc46",
+      "name": "❌ Inbox Desativado"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        560
+      ],
+      "id": "a0b2612f-cc21-4977-8afb-d68764428c43",
+      "name": "Mrg - Inbox Result"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1b63d9f2-0f3f-4c01-9fb9-e3ea41ffe66c",
+                    "leftValue": "={{ $('Workflow Trigger').item.json.switchProcessor.eventType }}",
+                    "rightValue": "BASEROW_ROWS_UPDATED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "baserow_update"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3d7c4cd6-8139-4937-b6d2-d6f1c9ec95f9",
+                    "leftValue": "={{ $('Workflow Trigger').item.json.switchProcessor.eventType }}",
+                    "rightValue": "VALID_MESSAGE_CREATED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "messages (created)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Workflow Trigger').item.json.switchProcessor.eventType }}",
+                    "rightValue": "VALID_UPDATE_STATE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3db0bef3-1d75-40c9-9ff7-891d48ade6c6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "messages_update"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3ab19c86-1edf-426a-b5db-cfaf57d8e1b5",
+                    "leftValue": "={{ $('Workflow Trigger').item.json.switchProcessor.eventType }}",
+                    "rightValue": "SYSTEM_MESSAGE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "seystem_message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        1744
+      ],
+      "id": "2bcee310-2f52-4313-bd42-690580125f7e",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "60736b06-d8c4-470e-8049-39fecc0fc1b7",
+              "name": "contactKey",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl.split('//')[1].replace(':','Port').replace(/\\./g, '_').replace(/-/g, '_').replace(/_com_br/g, '_br') }}:acc{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}:i{{ $('Merge - Instance Chatwoot Data').item.json.inboxId }}:ctt:{{ $('Nml - Webhook Data').item.json.contactData.phoneNumber }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3456,
+        1104
+      ],
+      "id": "37e12df5-f2d5-491c-8934-0768bb14ad32",
+      "name": "Redis Keys"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c9053b39-d14a-46ea-921b-45020f5622c0",
+              "name": "instanceKey",
+              "value": "=api:instance:{{ $('Workflow Trigger').item.json.body.token }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        1776
+      ],
+      "id": "6fdaf59c-32bd-4669-ac45-bbb7ac0dc81e",
+      "name": "Redis Instance Key"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9c54eff7-7a9d-4244-a491-616800fe9186",
+              "leftValue": "={{ $('Merge - Instance Chatwoot Data').item.json.inboxStatus }}",
+              "rightValue": "active",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "889650f1-6dd9-4365-ac42-977b9f8c8544",
+              "leftValue": "={{ typeof ($('Merge - Instance Chatwoot Data').item.json.inboxId) == \"string\" ? $('Merge - Instance Chatwoot Data').item.json.inboxId.toNumber() : $('Merge - Instance Chatwoot Data').item.json.inboxId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2336,
+        1808
+      ],
+      "id": "684de4a6-0a48-4307-9d45-372ce9f351c6",
+      "name": "Active Inbox?"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Nml - Webhook Data').item.json.messageId }}:TYPE",
+        "value": "={{ $('Nml - Webhook Data').item.json.content?.mediaType ||  $('Nml - Webhook Data').item.json.contentType }}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        1104
+      ],
+      "id": "3a48c209-fb3f-4bca-b9dc-c41259f498a8",
+      "name": "Cache MESSAGE TYPE",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb2d53c2-58a6-4f7e-84ed-baf92274e68d",
+              "name": "log",
+              "value": "=Status: ❌ Erro ao criar inbox - {{ $json.error.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1584,
+        512
+      ],
+      "id": "3d024d6d-f8d6-4800-99b7-5ecd3f8c9f17",
+      "name": "Log error"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "databaseId": "={{ $('Database Id').item.json.database }}",
+        "tableId": "={{ $('Database Id').item.json.table_instance_chatwoot_config }}",
+        "rowId": "={{ $('Workflow Trigger').item.json.body.items[0].id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "={{ $('Database Id').item.json.field_log_inbox }}",
+              "fieldValue": "={{ $json.log }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.baserow",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        512
+      ],
+      "id": "8407ef73-2093-4ac2-9a76-2e68a38623ea",
+      "name": "Log1",
+      "credentials": {
+        "baserowApi": {
+          "id": "vaXmu9qL2rwS0zyD",
+          "name": "Baserow (whatpro setup)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO message_map (stanza_id, cw_message_id, installation, cw_account_id, cw_inbox_id, cw_conversation_id, id_with_owner)\nVALUES (\n    '{{ $('Mrg - Create message (cmnt)').item.json.source_id }}',\n    {{ $('Mrg - Create message (cmnt)').item.json.id }},\n    '{{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}',\n    {{ $('Merge - Instance Chatwoot Data').item.json.accountId }},\n    {{ $('Mrg - Create message (cmnt)').item.json.inbox_id }},\n    {{ $('Mrg - Create message (cmnt)').item.json.conversation_id }},\n    '{{ $('Nml - Webhook Data').item.json.idWithOwner }}'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        7136,
+        1856
+      ],
+      "id": "7b9f2795-405f-448d-9822-49a62b04d0ce",
+      "name": "Map Message Ids",
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        5680,
+        2624
+      ],
+      "id": "b3b5309b-bf87-4cf5-964a-0713070e4661",
+      "name": "Convert to TXT"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8797db09-da96-4d6b-b81b-31be14defa0d",
+              "name": "database",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "4ad03714-5040-46db-b6d2-698ae7890784",
+              "name": "table_instance_chatwoot_config",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "21a0c1d9-aa3e-41ed-bc76-bd39dbccf861",
+              "name": "field_inbox_id",
+              "value": "5",
+              "type": "string"
+            },
+            {
+              "id": "dcb3c446-ac06-4aba-90ca-425015066efb",
+              "name": "field_log_inbox",
+              "value": "7",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16,
+        1584
+      ],
+      "id": "b0558d69-e4d3-4514-8413-423ede703a6b",
+      "name": "Database Id"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8a237508-4e1c-4703-8c76-6006dceb65bc",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.cwMessageType }}",
+              "rightValue": "outgoing",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2df021bc-e6d5-47dd-af57-dd793e194c4d",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.switchProcessor?.includes('SYSTEM_MESSAGE') ?? false }}",
+              "rightValue": "SYSTEM_MESSAGE",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "bf35e9c7-5c0b-4111-8515-ff727d5d33da",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.deleted ?? false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6320,
+        1744
+      ],
+      "id": "418a075f-c0e8-49e6-a1b2-0da6f6756d98",
+      "name": "Outgoing? & !System & !Deleted"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8a237508-4e1c-4703-8c76-6006dceb65bc",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.cwMessageType }}",
+              "rightValue": "incoming",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6528,
+        1872
+      ],
+      "id": "6669c61f-1342-42a6-948a-091b0d9daeb7",
+      "name": "Incoming?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "32a6463b-e541-48fc-be79-d5a2eed8279a",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.quoted ?? false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "7e23f050-67e3-4b20-8a59-278d3f66b595",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.edited ?? false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "42f654ec-a6a7-4512-8140-31096b55dbae",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.reaction ?? false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "7b33d600-6d88-48de-a30a-23da75eff59d",
+              "leftValue": "={{ $('Nml - Webhook Data').item.json.deleted ?? false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4640,
+        2032
+      ],
+      "id": "a359f552-e65a-492a-9280-93b73b22ff9f",
+      "name": "Quoted, edited, reaction or deleted?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM message_map\nWHERE stanza_id = 'MID:{{ \n  $('Nml - Webhook Data').item.json.quotedId || \n  $('Nml - Webhook Data').item.json.editedId || \n  $('Nml - Webhook Data').item.json.deletedId || \n  $('Nml - Webhook Data').item.json.reactionId\n}}'\nAND cw_account_id = {{ $('Merge - Instance Chatwoot Data').item.json.accountId }}\nAND cw_inbox_id = {{ $('Merge - Instance Chatwoot Data').item.json.inboxId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4848,
+        1920
+      ],
+      "id": "5b518dda-3a50-4d28-a9ab-804a191e1791",
+      "name": "Get messageId by instanzeId",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "kRosc1ylneR8MPmb",
+          "name": "Postgres (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================\n// CÓDIGO N8N - BUSCAR OU CRIAR CONTATO\n// ====================================\n\n// 1. OBTER DADOS DA MENSAGEM\nconst contactData = $('Nml - Webhook Data').item.json.contactData;\nconst webhookData = $('Nml - Webhook Data').item.json; //Adicionado para checar se mensagem é 'outgoing'.\nconst chatwootData = $('Merge - Instance Chatwoot Data').item.json;\n\n// Dados da mensagem\nconst chatId = contactData.chatId;\nconst senderLid = contactData.lid;\nconst phoneNumber = contactData.phoneNumber;\nlet senderName = contactData.senderName;\n\n\n\n//Provisório enquanto não damos um GET no contato quando iniciamos o contato pelo aplicativo do Whatsapp e o contato ainda não existe no Chatwoot, para que não crie com o nosso nome (somoso o \"sender\" nesse caso) ao invés de nome do contato que estamos enviando\nif (webhookData.cwMessageType === 'outgoing') {\n  senderName = \"Sem nome\";\n}\n\n// Dados da instância Chatwoot\nconst baseUrl = chatwootData.installationUrl;\nconst accountId = chatwootData.accountId;\nconst userToken = chatwootData.userToken;\n//v.02\nconst inboxId = chatwootData.inboxId;\n\n// ====================================\n// 2. FUNÇÃO PARA FAZER CHAMADAS À API\n// ====================================\nasync function chamarApiChatwoot(endpoint, metodo = 'GET', dados = null) {\n  const opcoes = {\n    method: metodo,\n    url: `${baseUrl}/api/v1/accounts/${accountId}${endpoint}`,\n    headers: {\n      'api_access_token': userToken\n    }\n  };\n  \n  // Se for POST, adicionar dados no corpo\n  if (metodo === 'POST' && dados) {\n    opcoes.body = dados;\n    opcoes.json = true;\n  }\n  \n  try {\n    const resposta = await this.helpers.httpRequest(opcoes);\n    return resposta;\n  } catch (erro) {\n    console.error('Erro na chamada da API:', erro);\n    throw erro;\n  }\n}\n\n// ====================================\n// 3. FUNÇÕES DE BUSCA DE CONTATO\n// ====================================\n\n// Buscar contato pelo WhatsApp ID completo\nasync function buscarPorChatId() {\n  console.log('🔍 Buscando contato por Chat ID:', chatId);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${chatId}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// Buscar contato pelo LID (identificador local)\nasync function buscarPorLid() {\n  if (!senderLid) {\n    console.log('❌ Sender LID não disponível');\n    return null;\n  }\n  \n  console.log('🔍 Buscando contato por LID:', senderLid);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${senderLid}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// Buscar contato pelo número de telefone\nasync function buscarPorTelefone() {\n  console.log('🔍 Buscando contato por telefone:', phoneNumber);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${phoneNumber}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// ====================================\n// 4. FUNÇÃO PARA CRIAR NOVO CONTATO\n// ====================================\nasync function criarNovoContato() {\n  console.log('➕ Criando novo contato para:', senderName);\n  \n  const dadosContato = {\n    name: senderName,\n    phone_number: `+${phoneNumber}`,\n    identifier: chatId,\n    inbox_id: inboxId //v0.2\n  };\n  \n  const novoContato = await chamarApiChatwoot('/contacts', 'POST', dadosContato);\n  console.log('✅ Contato criado com sucesso!');\n  \n  // A API de criação de contato retorna o contato dentro de `payload.contact`.\n  // Retornamos apenas o objeto de contato para manter a consistência.\n  return novoContato.payload.contact;\n}\n\n// ====================================\n// 5. LÓGICA PRINCIPAL - BUSCAR OU CRIAR\n// ====================================\nasync function processarContato() {\n  let contato = null;\n  \n  // Tentativa 1: Buscar por Chat ID (WhatsApp ID completo)\n  contato = await buscarPorChatId();\n  if (contato) {\n    console.log('✅ Contato encontrado por Chat ID');\n    return { dados: contato, chave: 'found_by_chat_id' };\n  }\n  \n  // Tentativa 2: Buscar por LID (se disponível)\n  contato = await buscarPorLid();\n  if (contato) {\n    console.log('✅ Contato encontrado por LID');\n    return { dados: contato, chave: 'found_by_lid' };\n  }\n  \n  // Tentativa 3: Buscar por número de telefone\n  contato = await buscarPorTelefone();\n  if (contato) {\n    console.log('✅ Contato encontrado por telefone');\n    return { dados: contato, chave: 'found_by_phone' };\n  }\n  \n  // Se não encontrou nada, criar novo contato\n  console.log('❌ Contato não encontrado. Criando novo...');\n  contato = await criarNovoContato();\n  return { dados: contato, chave: 'created_new' };\n}\n\n// ====================================\n// 6. EXECUTAR E RETORNAR RESULTADO\n// ====================================\ntry {\n  const resultado = await processarContato();\n  \n  // Inicializa a resposta\n  let respostaFinal;\n  \n  // Se a busca retornar dados no formato `meta` e `payload`, extraímos o `meta` e o primeiro contato do `payload`\n  if (resultado.dados.meta && resultado.dados.payload) {\n    respostaFinal = {\n      meta: resultado.dados.meta,\n      payload: resultado.dados.payload[0],\n      result: resultado.chave\n    };\n  } else {\n    // Se for um novo contato criado, ele já vem no formato que queremos.\n    respostaFinal = {\n      payload: resultado.dados,\n      result: resultado.chave\n    };\n  }\n  \n  return [{\n    json: respostaFinal\n  }];\n  \n} catch (error) {\n  console.error('❌ Erro no processamento:', error);\n  throw new Error(`Falha ao buscar/criar contato: ${error.message}`);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4112,
+        880
+      ],
+      "id": "6e5928b8-3206-4414-9e38-c9db66bb492e",
+      "name": "Find OR Create contact v0.2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"id\": $('Nml - Contact id').isExecuted ? $('Nml - Contact id').item.json.id : $('Mrg - contactCvs data').item.json.id,\n    \"source_id\": $('Find Contact and Filter created contact_inbox').item.json.payload.contact_inboxes.source_id,\n    \"cvsId\": $('Create conversation (media - without message)').item.json.id,\n    \"cvsStatus\": \"open\"\n  }\n}}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6704,
+        1008
+      ],
+      "id": "b875fc7f-77ab-4ca7-a681-ac577d94bded",
+      "name": "Nml - contactCvs to cache1"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('Redis Keys').item.json.contactKey }}",
+        "value": "={{ $('Nml - contactCvs to cache1').item.json.toJsonString() }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        6912,
+        1008
+      ],
+      "id": "12c2e490-a401-49b8-ba43-e23c5a65aa39",
+      "name": "Nml - contactCvs to cache2",
+      "credentials": {
+        "redis": {
+          "id": "2hZe7d9pEuGwj9FN",
+          "name": "Redis (whatpro)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================\n// CÓDIGO N8N - BUSCAR CONTATO\n// ====================================\n\n// 1. OBTER DADOS DA MENSAGEM\nconst webhookData = $('Nml - Webhook Data').item.json.contactData;\nconst chatwootData = $('Merge - Instance Chatwoot Data').item.json;\n\n// Dados da mensagem\nconst chatId = webhookData.chatId;\nconst senderLid = webhookData.lid;\nconst phoneNumber = webhookData.phoneNumber;\n\n// Dados da instância Chatwoot\nconst baseUrl = chatwootData.installationUrl;\nconst accountId = chatwootData.accountId;\nconst userToken = chatwootData.userToken;\n//v.02\nconst inboxId = parseInt(chatwootData.inboxId); //Parse Int porque o baserow está retornando string.\n\n// ====================================\n// 2. FUNÇÃO PARA FAZER CHAMADAS À API\n// ====================================\nasync function chamarApiChatwoot(endpoint, metodo = 'GET') {\n  const opcoes = {\n    method: metodo,\n    url: `${baseUrl}/api/v1/accounts/${accountId}${endpoint}`,\n    headers: {\n      'api_access_token': userToken\n    }\n  };\n\n  try {\n    const resposta = await this.helpers.httpRequest(opcoes);\n    return resposta;\n  } catch (erro) {\n    console.error('Erro na chamada da API:', erro);\n    throw erro;\n  }\n}\n\n// ====================================\n// 3. FUNÇÕES DE BUSCA DE CONTATO\n// ====================================\n\n// Buscar contato pelo WhatsApp ID completo\nasync function buscarPorChatId() {\n  console.log('🔍 Buscando contato por Chat ID:', chatId);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${chatId}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// Buscar contato pelo LID (identificador local)\nasync function buscarPorLid() {\n  if (!senderLid) {\n    console.log('❌ Sender LID não disponível');\n    return null;\n  }\n  \n  console.log('🔍 Buscando contato por LID:', senderLid);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${senderLid}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// Buscar contato pelo número de telefone\nasync function buscarPorTelefone() {\n  console.log('🔍 Buscando contato por telefone:', phoneNumber);\n  const resultado = await chamarApiChatwoot(`/contacts/search?q=${phoneNumber}`);\n  return resultado.meta.count > 0 ? resultado : null;\n}\n\n// ====================================\n// 5. LÓGICA PRINCIPAL - BUSCAR OU CRIAR\n// ====================================\nasync function processarContato() {\n  let contato = null;\n  \n  // Tentativa 1: Buscar por Chat ID (WhatsApp ID completo)\n  contato = await buscarPorChatId();\n  if (contato) {\n    console.log('✅ Contato encontrado por Chat ID');\n    return { dados: contato, chave: 'found_by_chat_id' };\n  }\n  \n  // Tentativa 2: Buscar por LID (se disponível)\n  contato = await buscarPorLid();\n  if (contato) {\n    console.log('✅ Contato encontrado por LID');\n    return { dados: contato, chave: 'found_by_lid' };\n  }\n  \n  // Tentativa 3: Buscar por número de telefone\n  contato = await buscarPorTelefone();\n  if (contato) {\n    console.log('✅ Contato encontrado por telefone');\n    return { dados: contato, chave: 'found_by_phone' };\n  }\n  \n}\n\n// ====================================\n// 6. EXECUTAR E RETORNAR RESULTADO\n// ====================================\ntry {\n  const resultado = await processarContato();\n  \n  // Se nenhum contato for encontrado, o 'resultado' pode ser nulo ou indefinido.\n  // Retornamos um item vazio para que o workflow possa tratar isso (ex: parar ou seguir por outro caminho).\n  if (!resultado) {\n    console.log('🛑 Nenhum contato encontrado em nenhuma das tentativas.');\n    return [{ json: { result: 'contact_not_found' } }];\n  }\n\n  // Inicializa a resposta\n  let respostaFinal;\n  \n  // Se a busca retornar dados, extraímos e filtramos o payload.\n  if (resultado.dados.meta && resultado.dados.payload && resultado.dados.payload.length > 0) {\n    // Pega o primeiro contato encontrado no payload\n    const contatoEncontrado = resultado.dados.payload[0];\n\n    // Verifica se existe o array 'contact_inboxes' para evitar erros\n    if (contatoEncontrado.contact_inboxes && Array.isArray(contatoEncontrado.contact_inboxes)) {\n      \n      // Usa .find() para encontrar o objeto 'contact_inbox' correto\n      // A condição é que o 'inbox.id' interno seja igual ao 'inboxId' da instância\n      const inboxCorreta = contatoEncontrado.contact_inboxes.find(\n        ci => ci.inbox && ci.inbox.id === inboxId\n      );\n\n      // Substitui o array [contact_inboxes] pelo objeto único encontrado (ou null se não encontrar)\n      contatoEncontrado.contact_inboxes = inboxCorreta || null;\n    }\n    \n    // Monta a resposta final com o payload já modificado\n    respostaFinal = {\n      meta: resultado.dados.meta,\n      payload: contatoEncontrado, // O payload agora contém a inbox filtrada\n      result: resultado.chave\n    };\n  }\n  \n  return [{\n    json: respostaFinal\n  }];\n  \n} catch (error) {\n  console.error('❌ Erro no processamento:', error);\n  // Garante que o workflow pare em caso de erro na API, por exemplo.\n  throw new Error(`Falha ao buscar/criar contato: ${error.message}`);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6512,
+        1008
+      ],
+      "id": "e798d186-340e-43e8-a699-ce6df605c2cf",
+      "name": "Find Contact and Filter created contact_inbox"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4b0fb66c-881a-49e8-a8cf-3391713c429e",
+              "leftValue": "={{ $('Workflow Trigger').item.json.switchProcessor.eventType }}",
+              "rightValue": "SYSTEM_MESSAGE_ERROR",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        1792
+      ],
+      "id": "00cb8db3-3676-41bf-9a7e-c7b645b5023a",
+      "name": "Sys Error?"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations/{{ $('Workflow Trigger').item.json.extra.conversationId }}/messages/{{ $('Workflow Trigger').item.json.extra.messageId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"failed\"}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        1584
+      ],
+      "id": "bc008f38-948d-4ad7-b5bd-97f942aae66f",
+      "name": "Agent Message status - Failed",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        6784,
+        2048
+      ],
+      "id": "ad9d10c5-9c11-41ec-83d5-ea1414bf4d22",
+      "name": "System & Deleted não precisa mapear"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.contentType === 'text' ||  $('Nml - Webhook Data').item.json.contentType === 'reaction' || $('Nml - Webhook Data').item.json.contentType === 'deletion' && $('Get messageId by instanzeId').item.json.deleted === false }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "2c4cd8e8-d38d-40fe-9a8d-d9da9ace74f6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7d3ee59b-d056-4319-9cff-d5a3cd106619",
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.contentType }}",
+                    "rightValue": "media",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "media"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "98c0325b-580f-4585-9d40-d409c0a2486f",
+                    "leftValue": "={{ $('Nml - Webhook Data').item.json.contentType === 'deletion' && $('Get messageId by instanzeId').item.json.deleted === true }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "already deleted"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        5024,
+        2016
+      ],
+      "id": "5adf7639-ea92-4280-bb23-17b847a71f1b",
+      "name": "Switch4"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=Deleted - Evento gerado por mensagem apagada no Chatwoot (portanto já marcada)."
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        5008,
+        2336
+      ],
+      "id": "88e98e08-5227-441b-bfdf-5f16b19ad562",
+      "name": "Deleted on Chatwoot"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "data",
+              "value": "=Unhandled Event: {{ $('Nml - Webhook Data').item.json.contentType }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        4976,
+        2496
+      ],
+      "id": "aeb5a6c5-9745-4461-bc85-829acd39b9bc",
+      "name": "Fallback"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a13f614e-4df1-4944-9acc-e3ef52588669",
+              "leftValue": "={{ $('Conversas NO INBOX?').item.json }}",
+              "rightValue": "={{ $('Merge - Instance Chatwoot Data').item.json.inboxId }}",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5696,
+        704
+      ],
+      "id": "f1d2572c-199e-434b-9668-3bbcc2e4c733",
+      "name": "Found?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Get contact conversations').item.json.payload;\nconst targetInboxId = $('Merge - Instance Chatwoot Data').item.json.inboxId;\n\n// Procura o primeiro item que tenha inbox_id igual ao valor desejado\nconst foundItem = payload.find(item => item.inbox_id === targetInboxId);\n\n// Retorna o item encontrado ou null se não encontrar nenhum\nreturn foundItem || null;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5504,
+        704
+      ],
+      "id": "58a578f8-939a-45b8-8837-1303505909f8",
+      "name": "Conversas NO INBOX?",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega todos os itens que chegam ao nó e extrai apenas a parte JSON de cada um.\nconst allJsonData = $input.all().map(item => item.json);\n\n// Decide qual será o conteúdo final do JSON.\nconst jsonToProcess = allJsonData.length === 1 ? allJsonData[0] : allJsonData;\n\n// Converte o objeto/array JSON final para uma string.\nconst jsonString = JSON.stringify(jsonToProcess, null, 2);\n\n// Cria um Buffer (dados binários) a partir da string JSON.\nconst buffer = Buffer.from(jsonString, 'utf-8');\n\n// Prepara os dados binários\nconst binaryData = await this.helpers.prepareBinaryData(buffer, 'file.json');\n\nreturn {\n  json: {},\n  binary: {\n    data: binaryData // Adiciona os dados binários\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5680,
+        2800
+      ],
+      "id": "bc75bafd-befa-422b-83dc-5cff73591422",
+      "name": "Convert to Json (cmnt)",
+      "notes": "Marquei pra retornar em itens separados porque do contrário ele adiciona a chave de array ('[ ]') do N8N e, por exemplo, o json deixa de funcionar pra importação no N8N.\n\n👆 Isso era válido para o node conversor padrão do n8N. Mas agora no code a ideia é parecida... estamos considerando todo o input como um único item a ser \"pushado\" para o binário. Então agora resolvemos o bug no caso de o .json ser apenas um array, agora estamos gerando o arquivo corretamente, e não vários itens como acontecia antes gerando mensagens no Chatwoot na quantidade de itens do array!"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Merge - Instance Chatwoot Data').item.json.installationUrl }}/api/v1/accounts/{{ $('Merge - Instance Chatwoot Data').item.json.accountId }}/conversations/{{ $('Mrg - contactCvs data').item.json.cvsId || $('Create conversation (media - without message)').item.json.id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "={{ $('Merge - Instance Chatwoot Data').item.json.userToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "attachments[]",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Nml - Webhook Data').item.json.content.caption || '' }}"
+            },
+            {
+              "name": "message_type",
+              "value": "={{ $('Nml - Webhook Data').item.json.cwMessageType }}"
+            },
+            {
+              "name": "source_id",
+              "value": "={{ $('Nml - Webhook Data').item.json.messageId }}"
+            },
+            {
+              "name": "content_attributes[in_reply_to]",
+              "value": "={{ $('Get messageId by instanzeId').isExecuted && $('Get messageId by instanzeId').item.json.cw_message_id !== undefined ? $('Get messageId by instanzeId').item.json.cw_message_id : '' }}"
+            },
+            {
+              "name": "content_attributes[in_reply_to_external_id]",
+              "value": "={{ $('Get messageId by instanzeId').isExecuted && $('Get messageId by instanzeId').item.json.stanza_id !== undefined ? $('Get messageId by instanzeId').item.json.stanza_id : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5952,
+        2320
+      ],
+      "id": "079f0f35-4711-4e2f-9dd2-fba259100477",
+      "name": "Create message (with attachment) (cmnt)",
+      "alwaysOutputData": false,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "O execute Once evita bug de loop infinito. Cenário observado: Joson apenas com array (antes do node code)... cada item do array gerava um file dentro do Chatwoot!"
+    },
+    {
+      "parameters": {
+        "content": "# ⚠️👉🏼 Substituir credenciais conforme tutorial",
+        "height": 96,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1056,
+        832
+      ],
+      "typeVersion": 1,
+      "id": "18caa783-ba1f-47b7-bace-46e791bc331a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# ⚠️👉🏼 Substituir credenciais conforme tutorial",
+        "height": 96,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2608,
+        848
+      ],
+      "typeVersion": 1,
+      "id": "421fa8e4-9940-4d85-b7e3-59897a2bd0b5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# ⚠️👉🏼 Substituir credenciais conforme tutorial",
+        "height": 96,
+        "width": 832,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        7664,
+        880
+      ],
+      "typeVersion": 1,
+      "id": "ea2106ae-d8f3-4c6f-9353-ac561fa0eab6",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Cache MESSAGE TYPE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Messages Status Updater",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No data?": {
+      "main": [
+        [
+          {
+            "node": "Get Instance&Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nml - Instance Chatwoot Cached Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instance&Chatwoot Data": {
+      "main": [
+        [
+          {
+            "node": "Nml - Instance Chatwoot Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Instance TTL 30D": {
+      "main": [
+        [
+          {
+            "node": "Merge - Instance Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Instance TTL 30D1": {
+      "main": [
+        [
+          {
+            "node": "Delete Inbox Token Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Instance Key": {
+      "main": [
+        [
+          {
+            "node": "Normalizer Baserow Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instance Chatwoot Data": {
+      "main": [
+        [
+          {
+            "node": "No data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instâncias a serem editadas": {
+      "main": [
+        [
+          {
+            "node": "Get InstanceSS Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizer Baserow Data": {
+      "main": [
+        [
+          {
+            "node": "Alteração no status do inbox?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Baserow Change": {
+      "main": [
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coluna Inbox Id preenchida?": {
+      "main": [
+        [
+          {
+            "node": "New Value = Inactive?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status puro, sem ID, não significa nada!",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coluna Status como active?": {
+      "main": [
+        [
+          {
+            "node": "New Value = Empty?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Coluna status inactive fazemos nada!",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtém inboxes": {
+      "main": [
+        [
+          {
+            "node": "Search Inbox Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe esse inbox ID?": {
+      "main": [
+        [
+          {
+            "node": "SET Cache Lock Inbox Id Change 6s1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a Inbox (Run once!!)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cache Lock Inbox Id Change": {
+      "main": [
+        [
+          {
+            "node": "Locked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET Cache Lock Inbox Id Change 6s": {
+      "main": [
+        [
+          {
+            "node": "Set new inbox Id & Wait Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 6s": {
+      "main": [
+        [
+          {
+            "node": "Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log": {
+      "main": [
+        [
+          {
+            "node": "INBOX ID AND SATUS3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "Error - Payload lixo do baserow lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Coluna Status como active?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Coluna Inbox Id preenchida?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete Instance Key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instâncias a serem editadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Locked?": {
+      "main": [
+        [
+          {
+            "node": "Esfria a cuca... (Trash Webhook)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtém inboxes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Instance Key (ItemSS!)": {
+      "main": [
+        [
+          {
+            "node": "Normalizer Baserow Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove this.inboxId from this.key": {
+      "main": [
+        [
+          {
+            "node": "INBOX ID AND SATUS1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Value = Empty?": {
+      "main": [
+        [
+          {
+            "node": "Deactivate this.inboxId from this.key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Cache Lock Inbox Id Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Value = Inactive?": {
+      "main": [
+        [
+          {
+            "node": "Remove this.inboxId from this.key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Cache Lock Inbox Id Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate this.inboxId from this.key": {
+      "main": [
+        [
+          {
+            "node": "INBOX ID AND SATUS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a Inbox (Run once!!)": {
+      "main": [
+        [
+          {
+            "node": "SET Cache Lock Inbox Id Change 6s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET Cache Lock Inbox Id Change 6s1": {
+      "main": [
+        [
+          {
+            "node": "Update And Log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set new inbox Id & Wait Message": {
+      "main": [
+        [
+          {
+            "node": "Wait 6s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INBOX ID AND SATUS": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Inbox Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INBOX ID AND SATUS1": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Inbox Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get InstanceSS Rows": {
+      "main": [
+        [
+          {
+            "node": "Delete Instance Key (ItemSS!)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INBOX ID AND SATUS3": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Inbox Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Set Instance TTL 30D1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Inbox Id": {
+      "main": [
+        [
+          {
+            "node": "Existe esse inbox ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INBOX ID AND SATUS4": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Inbox Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update And Log1": {
+      "main": [
+        [
+          {
+            "node": "INBOX ID AND SATUS4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get contact conversations": {
+      "main": [
+        [
+          {
+            "node": "Resource (CONTACT) not found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create message": {
+      "main": [
+        [
+          {
+            "node": "Mrg - Create message (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message status - Delivered1": {
+      "main": [
+        [
+          {
+            "node": "Cache Message As Delivered1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message status - Delivered": {
+      "main": [
+        [
+          {
+            "node": "Cache message (As Delivered!)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Instance Chatwoot Cached Data": {
+      "main": [
+        [
+          {
+            "node": "Merge - Instance Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Instance Chatwoot Data1": {
+      "main": [
+        [
+          {
+            "node": "Set Instance TTL 30D",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge - Instance Chatwoot Data": {
+      "main": [
+        [
+          {
+            "node": "Sys Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Message As Delivered1": {
+      "main": [
+        [
+          {
+            "node": "Map Message Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Webhook Data": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Binary File": {
+      "main": [
+        [
+          {
+            "node": "Txt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Messages Status Updater": {
+      "main": [
+        [
+          {
+            "node": "Execution Data5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create conversation (media - without message)": {
+      "main": [
+        [
+          {
+            "node": "Find Contact and Filter created contact_inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outgoing?": {
+      "main": [
+        [
+          {
+            "node": "Message status - Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recebidas não mudam de status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit 1 (first = most recent)": {
+      "main": [
+        [
+          {
+            "node": "Nml - contactCvs Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text message?": {
+      "main": [
+        [
+          {
+            "node": "Create conversation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create conversation (media - without message)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mrg - Create message (cmnt)": {
+      "main": [
+        [
+          {
+            "node": "Resource (CVS) not found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create conversation": {
+      "main": [
+        [
+          {
+            "node": "Nml - contactCvs to cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resource (CONTACT) not found?": {
+      "main": [
+        [
+          {
+            "node": "Turn back (2ª tentativa?)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Conversas NO INBOX?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resource (CVS) not found?": {
+      "main": [
+        [
+          {
+            "node": "Turn back (2ª tentativa?)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Outgoing? & !System & !Deleted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uazapi - Generate media Link": {
+      "main": [
+        [
+          {
+            "node": "Get Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turn back (2ª tentativa?)": {
+      "main": [
+        [
+          {
+            "node": "Não deveria ser permanente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find OR Create contact v0.2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turn back (2ª tentativa?)1": {
+      "main": [
+        [
+          {
+            "node": "Não deveria ser permanente1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get contact conversations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recebidas não mudam de status1": {
+      "main": [
+        [
+          {
+            "node": "Map Message Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - Contact id": {
+      "main": [
+        [
+          {
+            "node": "Result Contact Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - cached contactCvs": {
+      "main": [
+        [
+          {
+            "node": "Mrg - contactCvs data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get cached contactCvs": {
+      "main": [
+        [
+          {
+            "node": "Result Cache Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - contactCvs Data": {
+      "main": [
+        [
+          {
+            "node": "Cache contactCvs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache contactCvs": {
+      "main": [
+        [
+          {
+            "node": "Mrg - contactCvs data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache contactCvs1": {
+      "main": [
+        [
+          {
+            "node": "Outgoing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result Contact Search": {
+      "main": [
+        [
+          {
+            "node": "Get contact conversations",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Text message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mrg - contactCvs data": {
+      "main": [
+        [
+          {
+            "node": "Quoted, edited, reaction or deleted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result Cache Search": {
+      "main": [
+        [
+          {
+            "node": "Find OR Create contact v0.2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nml - cached contactCvs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - contactCvs to cache": {
+      "main": [
+        [
+          {
+            "node": "Cache contactCvs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Execution Data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execution Data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mrg - Create message (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Txt": {
+      "main": [
+        [
+          {
+            "node": "Convert to TXT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convert to Json (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create message (with attachment) (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alteração no status do inbox?": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Instance TTL 30D1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mrg - Inbox Result": {
+      "main": [
+        [
+          {
+            "node": "Delete Instance Key",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Database Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis Instance Key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis Instance Key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis Instance Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Keys": {
+      "main": [
+        [
+          {
+            "node": "Get cached contactCvs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Instance Key": {
+      "main": [
+        [
+          {
+            "node": "Get Instance Chatwoot Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Inbox?": {
+      "main": [
+        [
+          {
+            "node": "Nml - Webhook Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Inbox Desativado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache MESSAGE TYPE": {
+      "main": [
+        [
+          {
+            "node": "Redis Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log error": {
+      "main": [
+        [
+          {
+            "node": "Log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to TXT": {
+      "main": [
+        [
+          {
+            "node": "Create message (with attachment) (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Database Id": {
+      "main": [
+        [
+          {
+            "node": "Filter Baserow Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outgoing? & !System & !Deleted": {
+      "main": [
+        [
+          {
+            "node": "Message status - Delivered1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Incoming?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incoming?": {
+      "main": [
+        [
+          {
+            "node": "Recebidas não mudam de status1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "System & Deleted não precisa mapear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quoted, edited, reaction or deleted?": {
+      "main": [
+        [
+          {
+            "node": "Get messageId by instanzeId",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get messageId by instanzeId": {
+      "main": [
+        [
+          {
+            "node": "Switch4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find OR Create contact v0.2": {
+      "main": [
+        [
+          {
+            "node": "Nml - Contact id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - contactCvs to cache1": {
+      "main": [
+        [
+          {
+            "node": "Nml - contactCvs to cache2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nml - contactCvs to cache2": {
+      "main": [
+        [
+          {
+            "node": "Mrg - contactCvs data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Contact and Filter created contact_inbox": {
+      "main": [
+        [
+          {
+            "node": "Nml - contactCvs to cache1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sys Error?": {
+      "main": [
+        [
+          {
+            "node": "Agent Message status - Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Active Inbox?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Message status - Failed": {
+      "main": [
+        [
+          {
+            "node": "Active Inbox?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch4": {
+      "main": [
+        [
+          {
+            "node": "Create message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Uazapi - Generate media Link",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Deleted on Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found?": {
+      "main": [
+        [
+          {
+            "node": "Limit 1 (first = most recent)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Text message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversas NO INBOX?": {
+      "main": [
+        [
+          {
+            "node": "Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Json (cmnt)": {
+      "main": [
+        [
+          {
+            "node": "Create message (with attachment) (cmnt)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create message (with attachment) (cmnt)": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 30,
+    "availableInMCP": false
+  },
+  "versionId": "d9a88caa-7dc7-4454-bdbe-19ee97ea3a97",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e23f3221c9c13f410dedd6480997c7f1b273c096ebf708d184a8b0c24cf67206"
+  },
+  "id": "rCFY701JXyZ5wlB1",
+  "tags": [
+    {
+      "createdAt": "2025-10-17T11:42:11.665Z",
+      "updatedAt": "2025-10-17T11:42:11.665Z",
+      "id": "M533Cwcccnhc2pS9",
+      "name": "Uazapi"
+    },
+    {
+      "createdAt": "2025-02-06T10:11:38.193Z",
+      "updatedAt": "2025-02-06T10:11:38.193Z",
+      "id": "giucuooCzPVyIkng",
+      "name": "Whatpro"
+    }
+  ]
+}

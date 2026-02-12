@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset='utf-8'><title>mailers/agent_notifications/conversation_notifications_mailer/conversation_assignment.liquid</title></head><body><pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>&lt;p&gt;Hi {{user.available_name}},&lt;/p&gt;
+
+&lt;p&gt;Time to save the world. A new conversation has been assigned to you&lt;/p&gt;
+
+{% for chat_message in conversation.recent_messages %}
+  &lt;div&gt;
+    &lt;h4 style=&quot;margin: 0;&quot;&gt;
+      {% if chat_message.sender == user.available_name %}
+        You
+      {% else %}
+        {{chat_message.sender}}
+      {% endif %}
+    &lt;/h4&gt;
+  &lt;/div&gt;
+
+  &lt;div style=&quot;padding: 10px 20px; margin: 5px 0 20px 0; background: #F2F3F7; border-radius: 10px; display: inline-block; font-family: &#x27;Helvetica Neue&#x27;,Tahoma,Arial,sans-serif; text-align: start; unicode-bidi: plaintext;&quot;&gt;
+    {% if chat_message.content %}
+      {{chat_message.content}}
+    {% endif %}
+
+    {% if chat_message.attachments %}
+      {% for attachment in chat_message.attachments %}
+        Attachment [&lt;a href=&quot;{{ attachment }}&quot; _target=&quot;blank&quot;&gt;Click here to view&lt;/a&gt;]
+      {% endfor %}
+    {% endif %}
+  &lt;/div&gt;
+{% endfor %}
+
+&lt;p&gt;
+Click &lt;a href=&quot;{{action_url}}&quot;&gt;here&lt;/a&gt; to get cracking.
+&lt;/p&gt;
+</pre></body></html>

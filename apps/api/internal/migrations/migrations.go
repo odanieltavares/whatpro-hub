@@ -59,6 +59,9 @@ func RunMigrations(db *gorm.DB) error {
 	if err := MigrateEntitlements(db); err != nil {
 		return fmt.Errorf("failed to migrate entitlements tables: %w", err)
 	}
+	if err := MigrateChat(db); err != nil {
+		return fmt.Errorf("failed to migrate internal chat tables: %w", err)
+	}
 
 	// Create indexes
 	if err := createIndexes(db); err != nil {

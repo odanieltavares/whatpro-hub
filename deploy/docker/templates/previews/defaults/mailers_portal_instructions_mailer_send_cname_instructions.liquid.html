@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset='utf-8'><title>mailers/portal_instructions_mailer/send_cname_instructions.liquid</title></head><body><pre style='white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;'>&lt;tr&gt;
+  &lt;td&gt;
+    &lt;p&gt;Hello there,&lt;/p&gt;
+    &lt;p&gt;To complete the setup of your help center, you&#x27;ll need to update the DNS settings for your custom domain: &lt;strong&gt;{{ cname_record | split: &#x27; &#x27; | first }}&lt;/strong&gt;.&lt;/p&gt;
+    &lt;p&gt;Please add the following CNAME record to your DNS provider&#x27;s configuration:&lt;/p&gt;
+  &lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+  &lt;td&gt;
+    &lt;p&gt;&lt;strong&gt;{{ cname_record }}&lt;/strong&gt;&lt;/p&gt;
+  &lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+  &lt;td&gt;
+    &lt;p&gt;Step-by-step Instructions:&lt;/p&gt;
+
+    &lt;ol&gt;
+      &lt;li&gt;Log in to your DNS provider’s dashboard&lt;/li&gt;
+      &lt;li&gt;Go to the DNS management section&lt;/li&gt;
+      &lt;li&gt;Create a new CNAME record using the information above&lt;/li&gt;
+      &lt;li&gt;Save the changes and allow up to 24 hours for the DNS to propagate&lt;/li&gt;
+    &lt;/ol&gt;
+
+    &lt;p&gt;Once the DNS record is live, your custom domain will automatically be secured with an SSL certificate.&lt;/p&gt;
+
+    &lt;p&gt;If you have any questions or need help, feel free to reach out to our support team—we’re here to assist you.&lt;/p&gt;
+  &lt;/td&gt;
+&lt;/tr&gt;
+</pre></body></html>

@@ -36,6 +36,18 @@ type UpdateAccountRequest struct {
 }
 
 // ListAccounts handles listing all accounts (super admin)
+// @Summary List all accounts
+// @Description Get a paginated list of all accounts (Super Admin only)
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Param status query string false "Filter by status"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /accounts [get]
 func (h *Handler) ListAccounts(c *fiber.Ctx) error {
 	var req ListAccountsRequest
 	if err := c.QueryParser(&req); err != nil {
@@ -83,6 +95,15 @@ func (h *Handler) ListAccounts(c *fiber.Ctx) error {
 }
 
 // GetAccount handles fetching a single account
+// @Summary Get account details
+// @Description Get details of a specific account
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /accounts/{id} [get]
 func (h *Handler) GetAccount(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {
@@ -112,6 +133,16 @@ func (h *Handler) GetAccount(c *fiber.Ctx) error {
 }
 
 // CreateAccount handles creating a new account manually
+// @Summary Create account
+// @Description Create a new account manually (Super Admin)
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param account body CreateAccountRequest true "Account Data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Router /accounts [post]
 func (h *Handler) CreateAccount(c *fiber.Ctx) error {
 	var req CreateAccountRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -148,6 +179,17 @@ func (h *Handler) CreateAccount(c *fiber.Ctx) error {
 }
 
 // UpdateAccount handles updating an account
+// @Summary Update account
+// @Description Update account details (Admin/Super Admin)
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int true "Account ID"
+// @Param account body UpdateAccountRequest true "Update Data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /accounts/{id} [put]
 func (h *Handler) UpdateAccount(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id < 1 {

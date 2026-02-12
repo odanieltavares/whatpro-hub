@@ -1,0 +1,179 @@
+/* Inter Font - Chatwoot-inspired typography */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(240 10% 3.9%);
+  --border: hsl(240 5.9% 90%);
+  --ring: hsl(240 5.9% 10%);
+
+  /* Card & Popover - CRITICAL for dropdowns/modals */
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(240 10% 3.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(240 10% 3.9%);
+
+  /* Muted & Accent - for subtle backgrounds */
+  --muted: hsl(240 4.8% 95.9%);
+  --muted-foreground: hsl(240 3.8% 46.1%);
+  --accent: hsl(240 4.8% 95.9%);
+  --accent-foreground: hsl(240 5.9% 10%);
+
+  /* Secondary & Destructive */
+  --secondary: hsl(240 4.8% 95.9%);
+  --secondary-foreground: hsl(240 5.9% 10%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+
+  /* Input & Primary */
+  --input: hsl(240 5.9% 90%);
+  --primary: hsl(142.1 76.2% 36.3%);
+  --primary-foreground: hsl(0 0% 100%);
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --background: hsl(240 10% 3.9%);
+  --foreground: hsl(0 0% 98%);
+  --border: hsl(240 3.7% 15.9%);
+  --ring: hsl(240 4.8% 95.9%);
+  
+  /* Card & Popover - CRITICAL for dropdowns/modals in dark mode */
+  --card: hsl(240 4% 10%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(240 4% 10%);
+  --popover-foreground: hsl(0 0% 98%);
+  
+  /* Muted & Accent - for subtle backgrounds */
+  --muted: hsl(240 3.7% 15.9%);
+  --muted-foreground: hsl(240 5% 64.9%);
+  --accent: hsl(240 3.7% 15.9%);
+  --accent-foreground: hsl(0 0% 98%);
+  
+  /* Secondary & Destructive */
+  --secondary: hsl(240 3.7% 15.9%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(0 0% 98%);
+  
+  /* Input & Primary */
+  --input: hsl(240 3.7% 15.9%);
+  --primary: hsl(142.1 70.6% 45.3%);
+  --primary-foreground: hsl(0 0% 100%);
+  
+  /* Sidebar */
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  /* Shadcn base colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radix Colors - Slate Scale (neutral grays) */
+  --color-n-slate-1: #f8f9fa; /* Lightest background */
+  --color-n-slate-2: #f1f3f5; /* Subtle backgrounds */
+  --color-n-slate-3: #e9ecef; /* Hover/selected states */
+  --color-n-slate-4: #dee2e6; /* Borders, dividers */
+  --color-n-slate-5: #ced4da; /* Subtle borders */
+  --color-n-slate-6: #adb5bd; /* Muted text, icons */
+  --color-n-slate-7: #868e96; /* Placeholder text */
+  --color-n-slate-8: #495057; /* Secondary text */
+  --color-n-slate-9: #343a40; /* Primary text */
+  --color-n-slate-10: #212529; /* High contrast text */
+  --color-n-slate-11: #6c757d; /* Subdued text */
+  --color-n-slate-12: #212529; /* High contrast text */
+
+  /* Radix Colors - Teal Scale (brand/primary) */
+  --color-n-teal-1: #e6fcf5; /* Lightest teal */
+  --color-n-teal-2: #c3fae8; /* Subtle teal bg */
+  --color-n-teal-3: #96f2d7; /* Light teal */
+  --color-n-teal-4: #63e6be; /* Medium light */
+  --color-n-teal-5: #38d9a9; /* Medium */
+  --color-n-teal-6: #20c997; /* Primary teal */
+  --color-n-teal-7: #12b886; /* Darker teal */
+  --color-n-teal-8: #0ca678; /* Dark teal */
+  --color-n-teal-9: #099268; /* Brand color - primary */
+  --color-n-teal-10: #087f5b; /* Darkest teal - hover */
+
+  /* Brand aliases */
+  --color-n-brand: #099268;
+  --color-n-brand-hover: #087f5b;
+
+  /* Alpha overlays for hover states */
+  --color-n-alpha-1: rgba(0, 0, 0, 0.03);
+  --color-n-alpha-2: rgba(0, 0, 0, 0.05);
+  --color-n-alpha-3: rgba(0, 0, 0, 0.08);
+
+  /* Weak border */
+  --color-n-weak: #dee2e6;
+
+  /* Primary color (alias for consistency) */
+  --color-primary: #099268;
+  --color-primary-foreground: #ffffff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+}
+
+/* Scrollbar helpers (chat layout) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.mention-pill {
+  background: #e0f2ff;
+  color: #1d4ed8;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}

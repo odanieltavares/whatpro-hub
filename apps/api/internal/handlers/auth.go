@@ -9,6 +9,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// SSORequest is the request body for SSO
+type SSORequest struct {
+	Token string `json:"token" validate:"required"`
+}
+
 // AuthResponse represents the authentication response
 type AuthResponse struct {
 	Token     string       `json:"token"`
@@ -17,7 +22,17 @@ type AuthResponse struct {
 }
 
 // AuthSSO handles POST /api/v1/auth/sso
-// Validates Chatwoot token and issues WhatPro Hub JWT
+// @Summary Authenticate via Chatwoot SSO
+// @Description Validates Chatwoot token and issues WhatPro Hub JWT
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body SSORequest true "SSO Token"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /auth/sso [post]
 func (h *Handler) AuthSSO(c *fiber.Ctx) error {
 	var req SSORequest
 	if err := c.BodyParser(&req); err != nil {
@@ -81,6 +96,15 @@ func (h *Handler) AuthSSO(c *fiber.Ctx) error {
 }
 
 // AuthRefresh handles POST /api/v1/auth/refresh
+// @Summary Refresh access token
+// @Description Rotate access tokens using refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 501 {object} map[string]interface{}
+// @Router /auth/refresh [post]
 func (h *Handler) AuthRefresh(c *fiber.Ctx) error {
 	tokenString := middleware.ExtractToken(c)
 	if tokenString == "" {
@@ -92,6 +116,14 @@ func (h *Handler) AuthRefresh(c *fiber.Ctx) error {
 }
 
 // AuthLogout handles POST /api/v1/auth/logout
+// @Summary Logout user
+// @Description Invalidate session and tokens
+// @Tags Auth
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /auth/logout [post]
 func (h *Handler) AuthLogout(c *fiber.Ctx) error {
 	// TODO: Invalidate session in Redis
 	return h.Success(c, fiber.Map{
@@ -100,6 +132,15 @@ func (h *Handler) AuthLogout(c *fiber.Ctx) error {
 }
 
 // AuthMe handles GET /api/v1/auth/me
+// @Summary Get current user
+// @Description Get details of currently logged in user
+// @Tags Auth
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 404 {object} map[string]interface{}
+// @Router /auth/me [get]
 func (h *Handler) AuthMe(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"strings"
 	"whatpro-hub/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"

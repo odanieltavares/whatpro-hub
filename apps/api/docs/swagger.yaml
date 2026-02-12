@@ -1,4 +1,204 @@
 basePath: /api/v1
+definitions:
+  internal_handlers.AddTeamMemberRequest:
+    properties:
+      role:
+        enum:
+          - member
+          - lead
+        type: string
+      user_id:
+        type: integer
+    required:
+      - user_id
+    type: object
+  internal_handlers.AuthResponse:
+    properties:
+      expires_at:
+        type: string
+      token:
+        type: string
+      user:
+        $ref: "#/definitions/whatpro-hub_internal_models.User"
+    type: object
+  internal_handlers.CreateAccountRequest:
+    properties:
+      chatwoot_id:
+        type: integer
+      domain:
+        type: string
+      locale:
+        description: pt_BR, en_US, etc.
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      support_email:
+        type: string
+    required:
+      - chatwoot_id
+      - name
+    type: object
+  internal_handlers.CreateProviderRequest:
+    properties:
+      api_key:
+        type: string
+      base_url:
+        type: string
+      health_check_url:
+        type: string
+      instance_name:
+        type: string
+      metadata:
+        $ref: "#/definitions/whatpro-hub_internal_models.JSON"
+      name:
+        type: string
+      type:
+        type: string
+    required:
+      - api_key
+      - base_url
+      - name
+      - type
+    type: object
+  internal_handlers.CreateTeamRequest:
+    properties:
+      allow_auto_assign:
+        type: boolean
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+    required:
+      - name
+    type: object
+  internal_handlers.CreateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      whatpro_role:
+        type: string
+    required:
+      - email
+      - name
+      - whatpro_role
+    type: object
+  internal_handlers.SSORequest:
+    properties:
+      token:
+        type: string
+    required:
+      - token
+    type: object
+  internal_handlers.UpdateAccountRequest:
+    properties:
+      domain:
+        type: string
+      features:
+        $ref: "#/definitions/whatpro-hub_internal_models.JSON"
+      locale:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      settings:
+        $ref: "#/definitions/whatpro-hub_internal_models.JSON"
+      status:
+        enum:
+          - active
+          - inactive
+          - suspended
+        type: string
+      support_email:
+        type: string
+    type: object
+  internal_handlers.UpdateProviderRequest:
+    properties:
+      api_key:
+        type: string
+      base_url:
+        type: string
+      health_check_url:
+        type: string
+      instance_name:
+        type: string
+      metadata:
+        $ref: "#/definitions/whatpro-hub_internal_models.JSON"
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  internal_handlers.UpdateTeamRequest:
+    properties:
+      allow_auto_assign:
+        type: boolean
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+    type: object
+  internal_handlers.UpdateUserRequest:
+    properties:
+      availability_status:
+        enum:
+          - online
+          - offline
+          - busy
+        type: string
+      avatar_url:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      whatpro_role:
+        type: string
+    type: object
+  whatpro-hub_internal_models.JSON:
+    additionalProperties: true
+    type: object
+  whatpro-hub_internal_models.User:
+    properties:
+      account_id:
+        type: integer
+      availability_status:
+        type: string
+      avatar_url:
+        type: string
+      chatwoot_id:
+        type: integer
+      chatwoot_role:
+        type: string
+      created_at:
+        type: string
+      custom_role_id:
+        type: integer
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+      whatpro_role:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -11,7 +211,852 @@ info:
   termsOfService: http://swagger.io/terms/
   title: WhatPro Hub API
   version: "1.0"
-paths: {}
+paths:
+  /accounts:
+    get:
+      consumes:
+        - application/json
+      description: Get a paginated list of all accounts (Super Admin only)
+      parameters:
+        - description: Page number
+          in: query
+          name: page
+          type: integer
+        - description: Items per page
+          in: query
+          name: limit
+          type: integer
+        - description: Filter by status
+          in: query
+          name: status
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all accounts
+      tags:
+        - Accounts
+    post:
+      consumes:
+        - application/json
+      description: Create a new account manually (Super Admin)
+      parameters:
+        - description: Account Data
+          in: body
+          name: account
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.CreateAccountRequest"
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create account
+      tags:
+        - Accounts
+  /accounts/{accountId}/providers:
+    get:
+      consumes:
+        - application/json
+      description: Get a list of WhatsApp providers for a specific account
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+        - description: Filter by status
+          in: query
+          name: status
+          type: string
+        - description: Filter by type
+          in: query
+          name: type
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List providers
+      tags:
+        - Providers
+    post:
+      consumes:
+        - application/json
+      description: Create a new WhatsApp provider integration
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+        - description: Provider Data
+          in: body
+          name: provider
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.CreateProviderRequest"
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Quota Exceeded
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create provider
+      tags:
+        - Providers
+  /accounts/{accountId}/teams:
+    get:
+      consumes:
+        - application/json
+      description: Get a list of teams for a specific account
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List teams
+      tags:
+        - Teams
+    post:
+      consumes:
+        - application/json
+      description: Create a new team in the account
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+        - description: Team Data
+          in: body
+          name: team
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.CreateTeamRequest"
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Quota Exceeded
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create team
+      tags:
+        - Teams
+  /accounts/{accountId}/users:
+    get:
+      consumes:
+        - application/json
+      description: Get a list of users for a specific account
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+        - description: Filter by role
+          in: query
+          name: role
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List users
+      tags:
+        - Users
+    post:
+      consumes:
+        - application/json
+      description: Create a new user (Agent) in the account
+      parameters:
+        - description: Account ID
+          in: path
+          name: accountId
+          required: true
+          type: integer
+        - description: User Data
+          in: body
+          name: user
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.CreateUserRequest"
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Quota Exceeded
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create user
+      tags:
+        - Users
+  /accounts/{accountId}/users/{id}:
+    delete:
+      consumes:
+        - application/json
+      description: remove a user from the account
+      parameters:
+        - description: User ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete user
+      tags:
+        - Users
+    get:
+      consumes:
+        - application/json
+      description: Get a user by ID
+      parameters:
+        - description: User ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user
+      tags:
+        - Users
+    put:
+      consumes:
+        - application/json
+      description: Update user details
+      parameters:
+        - description: User ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Update Data
+          in: body
+          name: user
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.UpdateUserRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update user
+      tags:
+        - Users
+  /accounts/{id}:
+    get:
+      consumes:
+        - application/json
+      description: Get details of a specific account
+      parameters:
+        - description: Account ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get account details
+      tags:
+        - Accounts
+    put:
+      consumes:
+        - application/json
+      description: Update account details (Admin/Super Admin)
+      parameters:
+        - description: Account ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Update Data
+          in: body
+          name: account
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.UpdateAccountRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update account
+      tags:
+        - Accounts
+  /auth/logout:
+    post:
+      consumes:
+        - application/json
+      description: Invalidate session and tokens
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+        - ApiKeyAuth: []
+      summary: Logout user
+      tags:
+        - Auth
+  /auth/me:
+    get:
+      consumes:
+        - application/json
+      description: Get details of currently logged in user
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/whatpro-hub_internal_models.User"
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+        - ApiKeyAuth: []
+      summary: Get current user
+      tags:
+        - Auth
+  /auth/refresh:
+    post:
+      consumes:
+        - application/json
+      description: Rotate access tokens using refresh token
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "501":
+          description: Not Implemented
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh access token
+      tags:
+        - Auth
+  /auth/sso:
+    post:
+      consumes:
+        - application/json
+      description: Validates Chatwoot token and issues WhatPro Hub JWT
+      parameters:
+        - description: SSO Token
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.SSORequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_handlers.AuthResponse"
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Authenticate via Chatwoot SSO
+      tags:
+        - Auth
+  /providers/{id}:
+    delete:
+      consumes:
+        - application/json
+      description: Remove a provider from the account
+      parameters:
+        - description: Provider ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete provider
+      tags:
+        - Providers
+    get:
+      consumes:
+        - application/json
+      description: Get details of a specific provider
+      parameters:
+        - description: Provider ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get provider details
+      tags:
+        - Providers
+    put:
+      consumes:
+        - application/json
+      description: Update provider details
+      parameters:
+        - description: Provider ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
+        - description: Update Data
+          in: body
+          name: provider
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.UpdateProviderRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update provider
+      tags:
+        - Providers
+  /providers/{id}/health:
+    get:
+      consumes:
+        - application/json
+      description: Check if the provider is reachable and active
+      parameters:
+        - description: Provider ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check provider health
+      tags:
+        - Providers
+  /teams/{id}:
+    delete:
+      consumes:
+        - application/json
+      description: Remove a team from the account
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete team
+      tags:
+        - Teams
+    get:
+      consumes:
+        - application/json
+      description: Get details of a specific team
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get team details
+      tags:
+        - Teams
+    put:
+      consumes:
+        - application/json
+      description: Update team details
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Update Data
+          in: body
+          name: team
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.UpdateTeamRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update team
+      tags:
+        - Teams
+  /teams/{id}/members:
+    get:
+      consumes:
+        - application/json
+      description: Get users assigned to a team
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List team members
+      tags:
+        - Teams
+    post:
+      consumes:
+        - application/json
+      description: Assign a user to a team
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Member Data
+          in: body
+          name: member
+          required: true
+          schema:
+            $ref: "#/definitions/internal_handlers.AddTeamMemberRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add team member
+      tags:
+        - Teams
+  /teams/{id}/members/{userId}:
+    delete:
+      consumes:
+        - application/json
+      description: Unassign a user from a team
+      parameters:
+        - description: Team ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: User ID
+          in: path
+          name: userId
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Remove team member
+      tags:
+        - Teams
 schemes:
-- http
+  - http
 swagger: "2.0"
