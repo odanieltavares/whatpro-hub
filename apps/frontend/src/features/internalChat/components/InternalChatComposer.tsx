@@ -503,7 +503,7 @@ export function InternalChatComposer({
         </div>
       )}
 
-      <div className="px-4 pb-4 sm:px-6 sm:pb-6 bg-[#F3F6F9]">
+      <div className="px-4 pb-2 sm:px-6 sm:pb-3 bg-[#F3F6F9]">
         {attachedFiles.length > 0 && (
           <div className="mb-3 space-y-2">
             {attachedFiles.map((file, index) => (
@@ -527,132 +527,132 @@ export function InternalChatComposer({
             className="bg-white rounded-[24px] shadow-sm border border-gray-200 overflow-hidden flex flex-col relative focus-within:ring-2 focus-within:ring-blue-100 transition-all"
           >
             <div className="flex items-center justify-between px-4 py-3 bg-white">
-            {mode && onModeChange ? (
-              <div className="flex bg-[#F1F3F5] rounded-full p-1">
-                <button
-                  type="button"
-                  onClick={() => onModeChange('reply')}
-                  disabled={!!editingMessage}
-                  className={cn(
-                    'px-6 py-1.5 text-[11px] font-bold rounded-full transition-all',
-                    mode === 'reply' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400',
-                    editingMessage ? 'opacity-60 cursor-not-allowed' : ''
-                  )}
-                >
-                  Responder
+              {mode && onModeChange ? (
+                <div className="flex bg-[#F1F3F5] rounded-full p-1">
+                  <button
+                    type="button"
+                    onClick={() => onModeChange('reply')}
+                    disabled={!!editingMessage}
+                    className={cn(
+                      'px-6 py-1.5 text-[11px] font-bold rounded-full transition-all',
+                      mode === 'reply' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400',
+                      editingMessage ? 'opacity-60 cursor-not-allowed' : ''
+                    )}
+                  >
+                    Responder
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onModeChange('private')}
+                    disabled={!!editingMessage}
+                    className={cn(
+                      'px-6 py-1.5 text-[11px] font-bold rounded-full transition-all',
+                      mode === 'private' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400',
+                      editingMessage ? 'opacity-60 cursor-not-allowed' : ''
+                    )}
+                  >
+                    Mensagem Privada
+                  </button>
+                </div>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex items-center space-x-3 pr-2">
+                <button type="button" onClick={() => toggleFormat('bold')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Negrito">
+                  <Bold className="w-[18px] h-[18px]" strokeWidth={2.5} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onModeChange('private')}
-                  disabled={!!editingMessage}
-                  className={cn(
-                    'px-6 py-1.5 text-[11px] font-bold rounded-full transition-all',
-                    mode === 'private' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400',
-                    editingMessage ? 'opacity-60 cursor-not-allowed' : ''
-                  )}
-                >
-                  Mensagem Privada
+                <button type="button" onClick={() => toggleFormat('italic')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Italico">
+                  <Italic className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={() => toggleFormat('code')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Codigo">
+                  <Code className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={() => toggleFormat('unorderedList')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Lista">
+                  <List className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={() => toggleFormat('orderedList')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Lista numerada">
+                  <ListOrdered className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={insertLink} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Link">
+                  <LinkIcon className="w-[18px] h-[18px]" strokeWidth={2.5} />
                 </button>
               </div>
-            ) : (
-              <div />
-            )}
-
-            <div className="flex items-center space-x-3 pr-2">
-              <button type="button" onClick={() => toggleFormat('bold')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Negrito">
-                <Bold className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
-              <button type="button" onClick={() => toggleFormat('italic')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Italico">
-                <Italic className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
-              <button type="button" onClick={() => toggleFormat('code')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Codigo">
-                <Code className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
-              <button type="button" onClick={() => toggleFormat('unorderedList')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Lista">
-                <List className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
-              <button type="button" onClick={() => toggleFormat('orderedList')} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Lista numerada">
-                <ListOrdered className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
-              <button type="button" onClick={insertLink} className="text-[#CED4DA] hover:text-blue-500 transition-colors" title="Link">
-                <LinkIcon className="w-[18px] h-[18px]" strokeWidth={2.5} />
-              </button>
             </div>
-          </div>
 
             <div className="bg-white px-1 relative" ref={mentionAnchorRef}>
-            <div
-              ref={editorRef}
-              contentEditable={!disabled}
-              role="textbox"
-              aria-label="Editor de mensagem"
-              onInput={handleInput}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                'w-full min-h-[40px] max-h-[120px] px-5 pb-4 text-[13px] text-gray-700 outline-none resize-none placeholder-[#ADB5BD] bg-white leading-relaxed overflow-y-auto',
-                disabled ? 'opacity-50' : ''
+              <div
+                ref={editorRef}
+                contentEditable={!disabled}
+                role="textbox"
+                aria-label="Editor de mensagem"
+                onInput={handleInput}
+                onKeyDown={handleKeyDown}
+                className={cn(
+                  'w-full min-h-[40px] max-h-[120px] px-5 pb-4 text-[13px] text-gray-700 outline-none resize-none placeholder-[#ADB5BD] bg-white leading-relaxed overflow-y-auto',
+                  disabled ? 'opacity-50' : ''
+                )}
+                data-placeholder={placeholder}
+                suppressContentEditableWarning
+              />
+              {!hasText && (
+                <div className="pointer-events-none absolute left-5 top-3 text-[13px] text-[#ADB5BD]">
+                  {placeholder}
+                </div>
               )}
-              data-placeholder={placeholder}
-              suppressContentEditableWarning
-            />
-            {!hasText && (
-              <div className="pointer-events-none absolute left-5 top-3 text-[13px] text-[#ADB5BD]">
-                {placeholder}
-              </div>
-            )}
 
             </div>
 
             <div className="flex items-center justify-between p-4 px-5 bg-white">
-            <div className="flex space-x-2.5 relative">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,application/pdf,.doc,.docx"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
+              <div className="flex space-x-2.5 relative">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <button
+                  ref={emojiButtonRef}
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  disabled={disabled}
+                  className={cn(
+                    'p-2.5 rounded-[14px] transition-all border shadow-sm',
+                    showEmojiPicker
+                      ? 'bg-blue-50 border-blue-100 text-blue-500'
+                      : 'bg-[#F8F9FA] border-[#E9ECEF] text-[#ADB5BD] hover:text-gray-600'
+                  )}
+                >
+                  <Smile className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={disabled}
+                  className="p-2.5 bg-[#F8F9FA] border-[#E9ECEF] text-[#ADB5BD] hover:text-gray-600 rounded-[14px] transition-all border shadow-sm disabled:opacity-50"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+              </div>
+
               <button
-                ref={emojiButtonRef}
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                disabled={disabled}
+                type="submit"
+                disabled={!canSend() || disabled}
                 className={cn(
-                  'p-2.5 rounded-[14px] transition-all border shadow-sm',
-                  showEmojiPicker
-                    ? 'bg-blue-50 border-blue-100 text-blue-500'
-                    : 'bg-[#F8F9FA] border-[#E9ECEF] text-[#ADB5BD] hover:text-gray-600'
+                  'h-10 px-6 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]',
+                  canSend() && !disabled
+                    ? 'bg-[#82C3B1] text-white hover:bg-[#71b1a0] hover:shadow-md'
+                    : 'bg-[#F8F9FA] border border-[#E9ECEF] text-[#ADB5BD] cursor-not-allowed'
                 )}
               >
-                <Smile className="w-5 h-5" />
+                <span className="hidden sm:inline text-xs uppercase font-bold tracking-wider">Enviar</span>
+                <SendHorizontal
+                  className={cn('w-3.5 h-3.5 transition-transform', canSend() ? 'translate-x-0.5' : '')}
+                  strokeWidth={2.5}
+                />
               </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled}
-                className="p-2.5 bg-[#F8F9FA] border-[#E9ECEF] text-[#ADB5BD] hover:text-gray-600 rounded-[14px] transition-all border shadow-sm disabled:opacity-50"
-              >
-                <Paperclip className="w-5 h-5" />
-              </button>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!canSend() || disabled}
-              className={cn(
-                'h-10 px-6 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]',
-                canSend() && !disabled
-                  ? 'bg-[#82C3B1] text-white hover:bg-[#71b1a0] hover:shadow-md'
-                  : 'bg-[#F8F9FA] border border-[#E9ECEF] text-[#ADB5BD] cursor-not-allowed'
-              )}
-            >
-              <span className="hidden sm:inline text-xs uppercase font-bold tracking-wider">Enviar</span>
-              <SendHorizontal
-                className={cn('w-3.5 h-3.5 transition-transform', canSend() ? 'translate-x-0.5' : '')}
-                strokeWidth={2.5}
-              />
-            </button>
             </div>
           </form>
 
@@ -692,14 +692,14 @@ export function InternalChatComposer({
           {showEmojiPicker && (
             <div
               ref={emojiPopoverRef}
-              className="absolute left-0 bottom-[88px] bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 p-3 grid grid-cols-6 gap-2"
+              className="absolute left-0 bottom-[88px] bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl z-50 p-4 grid grid-cols-6 gap-3 min-w-[320px]"
             >
               {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => insertEmoji(emoji)}
-                  className="text-lg hover:scale-110 transition-transform"
+                  className="flex items-center justify-center w-10 h-10 text-2xl hover:bg-white/50 hover:scale-110 transition-all rounded-xl"
                 >
                   {emoji}
                 </button>

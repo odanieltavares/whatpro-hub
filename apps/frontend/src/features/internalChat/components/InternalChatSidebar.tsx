@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Plus, Search, Check, CheckCheck, Pin } from 'lucide-react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import { Plus, Search, Check, CheckCheck, Pin, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InternalAvatar } from './InternalAvatar';
 import type { ChatRoom } from '../../chat/types';
@@ -34,12 +34,21 @@ export function InternalChatSidebar({
   isRoomPinned,
 }: InternalChatSidebarProps) {
   const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const filteredRooms = useMemo(() => {
     if (!search.trim()) return rooms;
     const needle = search.toLowerCase();
     return rooms.filter((r) => r.name?.toLowerCase().includes(needle));
   }, [rooms, search]);
+
   const groupAvatar = (name?: string) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Grupo')}&background=1e3a8a&color=ffffff&bold=true`;
   const dmAvatar = (name?: string) =>
@@ -62,6 +71,44 @@ export function InternalChatSidebar({
 
   const orderedRooms = useMemo(() => [...groupRooms, ...dmRooms], [groupRooms, dmRooms]);
 
+  const pinnedGroupCount = useMemo(() =>
+    groupRooms.filter(r => isRoomPinned?.(r)).length,
+    [groupRooms, isRoomPinned]
+  );
+
+  const pinnedDmCount = useMemo(() =>
+    dmRooms.filter(r => isRoomPinned?.(r)).length,
+    [dmRooms, isRoomPinned]
+  );
+
+  const handleTogglePin = (room: ChatRoom, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onTogglePinRoom || !isRoomPinned) return;
+
+    const isPinned = isRoomPinned(room);
+
+    // If unpinning, just do it
+    if (isPinned) {
+      onTogglePinRoom(room);
+      return;
+    }
+
+    // If pinning, check limits
+    if (room.type === 'room') {
+      if (pinnedGroupCount >= 2) {
+        setError('Máximo de 2 grupos fixados');
+        return;
+      }
+    } else {
+      if (pinnedDmCount >= 3) {
+        setError('Máximo de 3 conversas fixadas');
+        return;
+      }
+    }
+
+    onTogglePinRoom(room);
+  };
+
   const renderLastMessageStatus = (roomId: string) => {
     const status = getLastMessageStatus?.(roomId);
     if (!status) return null;
@@ -73,7 +120,15 @@ export function InternalChatSidebar({
   };
 
   return (
-    <div className="w-80 h-full flex flex-col bg-white border-r border-gray-100 shadow-sm z-10 font-['Inter']">
+    <div className="w-80 h-full flex flex-col bg-white border-r border-gray-100 shadow-sm z-10 font-['Inter'] relative">
+      {/* Error Toast */}
+      {error && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-3 h-3 mr-1.5" />
+          {error}
+        </div>
+      )}
+
       <div className="p-5 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-[#1e293b] tracking-tight">Mensagens</h2>
         <button
@@ -144,11 +199,16 @@ export function InternalChatSidebar({
           const pinned = isRoomPinned?.(room);
 
           return (
-            <button
+            <div
               key={room.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectRoom(room)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') onSelectRoom(room);
+              }}
               className={cn(
-                'group w-full flex items-center px-5 py-3 transition-all relative border-b border-gray-50/50',
+                'group w-full flex items-center px-5 py-3 transition-all relative border-b border-gray-50/50 cursor-pointer text-left',
                 isActive ? 'bg-[#f1f7ff]' : 'hover:bg-gray-50'
               )}
             >
@@ -169,7 +229,6 @@ export function InternalChatSidebar({
                     {room.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    {pinned && <Pin className="w-3 h-3 text-blue-500" />}
                     <span className="text-[11px] text-gray-400 font-medium ml-2">
                       {room.last_message_at
                         ? new Date(room.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -201,17 +260,19 @@ export function InternalChatSidebar({
               {onTogglePinRoom && (
                 <button
                   type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onTogglePinRoom(room);
-                  }}
-                  className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-blue-500"
-                  title="Fixar conversa"
+                  onClick={(e) => handleTogglePin(room, e)}
+                  className={cn(
+                    "absolute right-3 top-3 transition-opacity",
+                    pinned
+                      ? "opacity-100 text-amber-500"
+                      : "opacity-0 group-hover:opacity-100 text-gray-300 hover:text-amber-500"
+                  )}
+                  title={pinned ? "Desafixar grupo" : "Fixar grupo"}
                 >
-                  <Pin className="w-3.5 h-3.5" />
+                  <Pin className={cn("w-3.5 h-3.5", pinned && "fill-current")} />
                 </button>
               )}
-            </button>
+            </div>
           );
         })}
 
@@ -226,11 +287,16 @@ export function InternalChatSidebar({
           const pinned = isRoomPinned?.(room);
 
           return (
-            <button
+            <div
               key={room.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectRoom(room)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') onSelectRoom(room);
+              }}
               className={cn(
-                'group w-full flex items-center px-5 py-3 transition-all relative border-b border-gray-50/50',
+                'group w-full flex items-center px-5 py-3 transition-all relative border-b border-gray-50/50 cursor-pointer text-left',
                 isActive ? 'bg-[#f1f7ff]' : 'hover:bg-gray-50'
               )}
             >
@@ -251,7 +317,6 @@ export function InternalChatSidebar({
                     {room.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    {pinned && <Pin className="w-3 h-3 text-blue-500" />}
                     <span className="text-[11px] text-gray-400 font-medium ml-2">
                       {room.last_message_at
                         ? new Date(room.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -283,23 +348,22 @@ export function InternalChatSidebar({
               {onTogglePinRoom && (
                 <button
                   type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onTogglePinRoom(room);
-                  }}
-                  className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-blue-500"
-                  title="Fixar conversa"
+                  onClick={(e) => handleTogglePin(room, e)}
+                  className={cn(
+                    "absolute right-3 top-3 transition-opacity",
+                    pinned
+                      ? "opacity-100 text-amber-500"
+                      : "opacity-0 group-hover:opacity-100 text-gray-300 hover:text-amber-500"
+                  )}
+                  title={pinned ? "Desafixar conversa" : "Fixar conversa"}
                 >
-                  <Pin className="w-3.5 h-3.5" />
+                  <Pin className={cn("w-3.5 h-3.5", pinned && "fill-current")} />
                 </button>
               )}
-            </button>
+            </div>
           );
         })}
-
       </div>
     </div>
   );
 }
-
-

@@ -21,7 +21,7 @@ export function InternalChatHeader({
   onToggleProfile,
 }: InternalChatHeaderProps) {
   return (
-    <header className="h-16 bg-white border-b border-gray-100 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm/50">
+    <header className="h-16 bg-white border-b border-gray-100 px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm">
       <div className="flex items-center space-x-3">
         <InternalAvatar src={avatar} alt={title} size="md" active={isOnline} />
         <div>

@@ -308,10 +308,10 @@ export const InternalChatMessageBubble = React.memo(function InternalChatMessage
                 Nota Privada
               </div>
             )}
-            <p className="text-[13px] leading-relaxed whitespace-pre-wrap">
+            <div className="text-[13px] leading-relaxed whitespace-pre-wrap">
               {renderMarkdown(message.content)}
               {message.edited_at && <span className="text-[10px] opacity-60 ml-2 italic">(editado)</span>}
-            </p>
+            </div>
           </div>
 
           <div
