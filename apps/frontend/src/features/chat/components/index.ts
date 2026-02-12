@@ -1,0 +1,10 @@
+// Chat components - Chatwoot-inspired UI
+export { MessageBubble } from './MessageBubble';
+export { DaySeparator } from './DaySeparator';
+export { UnreadBadge } from './UnreadBadge';
+export { TypingIndicator } from './TypingIndicator';
+export { AttachmentCarousel } from './AttachmentCarousel';
+export { MentionsDropdown } from './MentionsDropdown';
+export { MessageInput } from './MessageInput';
+export { ConversationCard } from './ConversationCard';
+export { ConversationList } from './ConversationList';
