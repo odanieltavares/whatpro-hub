@@ -5,6 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -23,7 +26,7 @@ type UserClaims struct {
 }
 
 // JWT returns the JWT authentication middleware
-func JWT(secret string) fiber.Handler {
+func JWT(secret string, rdb *redis.Client) fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(secret)},
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -36,6 +39,20 @@ func JWT(secret string) fiber.Handler {
 			// Extract user claims and store in context
 			token := c.Locals("user").(*jwt.Token)
 			claims := token.Claims.(jwt.MapClaims)
+
+			// Check if token is blacklisted (if Redis is available)
+			if rdb != nil {
+				jti, ok := claims["jti"].(string)
+				if ok {
+					isBlacklisted, _ := rdb.Get(c.Context(), "blacklist:"+jti).Result()
+					if isBlacklisted != "" {
+						return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+							"error":   "Unauthorized",
+							"message": "Token revoked",
+						})
+					}
+				}
+			}
 
 			c.Locals("user_id", int(claims["user_id"].(float64)))
 			c.Locals("chatwoot_id", int(claims["chatwoot_id"].(float64)))
@@ -104,23 +121,46 @@ func RequireAccountAccess() fiber.Handler {
 	}
 }
 
-// GenerateToken creates a new JWT token for a user
-func GenerateToken(secret string, claims *UserClaims) (string, time.Time, error) {
-	expiresAt := time.Now().Add(24 * time.Hour)
-
+// GenerateTokens creates new access and refresh tokens for a user
+func GenerateTokens(secret string, claims *UserClaims) (string, string, time.Time, error) {
+	// 1. Access Token (Short-lived: 15 mins)
+	accessExpires := time.Now().Add(15 * time.Minute)
+	accessID := uuid.New().String()
+	
 	claims.RegisteredClaims = jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
+		ID:        accessID,
+		ExpiresAt: jwt.NewNumericDate(accessExpires),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		Issuer:    "whatpro-hub",
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(secret))
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", time.Time{}, err
+		return "", "", time.Time{}, err
 	}
 
-	return tokenString, expiresAt, nil
+	// 2. Refresh Token (Long-lived: 7 days)
+	refreshExpires := time.Now().Add(7 * 24 * time.Hour)
+	refreshID := uuid.New().String()
+	
+	// Copy claims but set new exp
+	refreshClaims := *claims
+	refreshClaims.RegisteredClaims = jwt.RegisteredClaims{
+		ID:        refreshID,
+		ExpiresAt: jwt.NewNumericDate(refreshExpires),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Issuer:    "whatpro-hub",
+		Subject:   "refresh",
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+
+	return accessTokenString, refreshTokenString, accessExpires, nil
 }
 
 // ExtractToken extracts the token from the Authorization header

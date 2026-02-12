@@ -186,7 +186,7 @@ func main() {
 	// Protected routes (requires JWT authentication)
 	// =========================================================================
 	protected := api.Group("")
-	protected.Use(middleware.JWT(cfg.JWTSecret))
+	protected.Use(middleware.JWT(cfg.JWTSecret, rdb))
 
 	// 5. Role-Based Rate Limiting (AFTER authentication)
 	// Applies different limits based on user role

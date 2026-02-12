@@ -17,6 +17,9 @@ PREVIEW_PORT_ALT=8089
 PREVIEW_PORT_MIN=8100
 PREVIEW_PORT_MAX=8110
 
+# Exportar PATH para garantir que ferramentas instaladas sejam vistas
+export PATH=$PATH:/usr/local/go/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ 2>/dev/null | head -1)/bin
+
 detect_platform() {
   local uname_s
   uname_s=$(uname -s 2>/dev/null || echo "")
@@ -376,20 +379,53 @@ a{{color:#2563eb;text-decoration:none}}
 PY
 }
 
+install_requirements() {
+  echo "Redirecionando para o menu de instalação..."
+  pause
+  dev_requirements_menu
+}
+
 check_requirements() {
   echo "Verificando requisitos..."
+  local missing=0
+  
+  if ! command -v docker >/dev/null 2>&1; then missing=1; fi
+  if ! docker info >/dev/null 2>&1; then missing=1; fi
+  if ! command -v python3 >/dev/null 2>&1; then missing=1; fi
+  if ! command -v awk >/dev/null 2>&1; then missing=1; fi
+  if ! command -v sed >/dev/null 2>&1; then missing=1; fi
+  
+  if [ "$missing" -eq 1 ]; then
+    echo -e "${color_yellow}Alguns requisitos não foram encontrados ou o Docker não está rodando.${color_reset}"
+    check_dev_requirements || true
+    echo ""
+    read -rp "Deseja tentar instalar/corrigir os requisitos agora? (y/N): " ans
+    if [[ "$ans" =~ ^[Yy]$ ]]; then
+      dev_requirements_menu
+      # Re-check after menu
+      echo "Verificando novamente..."
+    else
+      echo -e "${color_red}Abortando. Requisitos obrigatórios não atendidos.${color_reset}"
+      return 1
+    fi
+  fi
+
+  # Segunda verificação (pós-tentativa de instalação)
   require_cmd docker
   require_cmd awk
   require_cmd sed
+  
   if [ "$PLATFORM" = "macos" ]; then
     require_cmd lsof || true
   else
     require_cmd ss || true
   fi
+
   if ! command -v docker compose >/dev/null 2>&1; then
     echo -e "${color_red}docker compose indisponível${color_reset}"
     return 1
   fi
+  
   if ! docker info >/dev/null 2>&1; then
     echo -e "${color_red}Docker engine não está rodando${color_reset}"
     if [ "$PLATFORM" = "macos" ]; then
@@ -401,15 +437,18 @@ check_requirements() {
     fi
     return 1
   fi
+  
   if ! command -v python3 >/dev/null 2>&1; then
     echo -e "${color_red}python3 indisponível (necessário para ler stacks.json)${color_reset}"
     return 1
   fi
+  
   if [ ! -f "$STACKS_JSON" ]; then
     echo -e "${color_red}stacks.json não encontrado em: $STACKS_JSON${color_reset}"
     echo "Defina WHATPRO_SETUP_STACKS_JSON ou WHATPRO_SETUP_DOCKER_DIR."
     return 1
   fi
+  
   warn_path_mismatch
   echo -e "${color_green}OK${color_reset}"
 }
@@ -2155,13 +2194,26 @@ install_docker() {
       ;;
     wsl)
       echo "Para WSL, você tem duas opções:"
-      echo "1) Instalar Docker Desktop no Windows com integração WSL2"
-      echo "2) Instalar Docker Engine nativo no WSL (recomendado para VPS)"
-      read -rp "Instalar Docker Engine nativo no WSL? (y/N): " ans
-      if [[ ! "$ans" =~ ^[Yy]$ ]]; then
-        echo "Instale o Docker Desktop: https://www.docker.com/products/docker-desktop/"
-        return 1
+    wsl)
+      echo "Para WSL (Simulação VPS), você tem duas opções:"
+      echo "1) Instalar Docker Engine nativo no Ubuntu (RECOMENDADO / VPS MODE)"
+      echo "   - Performance superior, ambiente fiel à produção."
+      echo "2) Instalar Docker Desktop no Windows"
+      echo "   - Integração visual, mas performance menor."
+      
+      read -rp "Qual deseja instalar? (1-Nativo / 2-Desktop): " ans_docker
+      if [ "$ans_docker" = "2" ]; then
+        if command -v winget.exe >/dev/null 2>&1; then
+          echo "Tentando instalar Docker Desktop via Winget..."
+          winget.exe install Docker.DockerDesktop || echo -e "${color_red}Falha no Winget. Instale manualmente.${color_reset}"
+          echo -e "${color_yellow}Reinicie o Windows ou inicie o Docker Desktop manualmente.${color_reset}"
+        else
+          echo "Winget não encontrado. Instale manualmente: https://www.docker.com/products/docker-desktop/"
+        fi
+        return 0
       fi
+      echo "Instalando Docker Nativo (VPS Mode)..."
+      ;;
       ;&  # Fall through to linux case
     linux)
       echo "Instalando Docker Engine..."
@@ -2592,5 +2644,111 @@ main_menu() {
   done
 }
 
+ensure_linux_fs() {
+  # Se estamos no Windows (NTFS /mnt/c etc)
+  if [[ "$ROOT_DIR" == /mnt/* ]]; then
+    local target_dir="$HOME/whatpro-hub"
+    
+    echo -e "${color_yellow}============================================================${color_reset}"
+    echo -e "${color_yellow}⚠️  AMBIENTE WINDOWS (NTFS) DETECTADO ⚠️${color_reset}"
+    echo -e "${color_yellow}============================================================${color_reset}"
+    echo "Executar o projeto diretamente do Windows (/mnt/...) causa:"
+    echo "1. Performance extremamente lenta no Docker (I/O)."
+    echo "2. Erros de permissão de arquivos (chmod não funciona)."
+    echo "3. Incompatibilidade com Hot-Reload."
+    echo ""
+    echo -e "Recomendação: ${color_green}Mover para o ambiente Linux nativo ($target_dir)${color_reset}"
+    echo ""
+    
+    if [ -d "$target_dir" ]; then
+      echo -e "${color_red}ATENÇÃO: Já existe uma instalação em $target_dir${color_reset}"
+      echo "Deseja:"
+      echo "1) Usar a instalação existente (ignorar pasta atual)"
+      echo "2) Sobrescrever com a pasta atual (CUIDADO: APAGA DADOS LÁ)"
+      echo "3) Cancelar"
+      read -rp "Opção: " mig_opt
+      case "$mig_opt" in
+        1)
+          echo "Alternando para $target_dir..."
+          cd "$target_dir/installer" 2>/dev/null || cd "$target_dir"
+          exec ./whatpro-setup
+          ;;
+        2)
+          echo "Removendo instalação antiga..."
+          rm -rf "$target_dir"
+          ;;
+        *)
+          echo "Cancelado."
+          exit 1
+          ;;
+      esac
+    else
+      echo "Nenhuma instalação prévia encontrada no Linux."
+      read -rp "Mover arquivos para Linux agora? (S/n): " ans
+      if [[ "$ans" =~ ^[Nn]$ ]]; then
+        echo "Continuando no Windows (Não recomendado)..."
+        return 0
+      fi
+    fi
+
+    echo "Copiando arquivos..."
+    mkdir -p "$target_dir"
+    # Usar rsync para copiar, excluindo node_modules/vendor para ser limpo
+    if command -v rsync >/dev/null; then
+       rsync -a --no-perms --chmod=ug+rwX --exclude 'node_modules' --exclude 'vendor' --exclude '.git/objects' "$ROOT_DIR/" "$target_dir/"
+    else
+       echo "rsync não encontrado, usando cp..."
+       cp -r "$ROOT_DIR/." "$target_dir/"
+    fi
+    
+    echo "Ajustando permissões..."
+    chmod +x "$target_dir/installer/whatpro-setup"
+    
+    echo -e "${color_green}Migração concluída!${color_reset}"
+    echo "Reiniciando script no novo local..."
+    echo ""
+    exec "$target_dir/installer/whatpro-setup"
+  fi
+}
+
+check_dirty_env() {
+  # Verificar instalações parciais ou quebradas
+  local dirty=0
+  
+  # Check Node
+  if [ -d "$ROOT_DIR/apps/frontend" ] && [ ! -d "$ROOT_DIR/apps/frontend/node_modules" ]; then
+    echo -e "${color_yellow}[!] Frontend detectado sem dependências instaladas.${color_reset}"
+    dirty=1
+  fi
+  
+  # Check Go
+  if [ -d "$ROOT_DIR/apps/api" ] && [ ! -f "$ROOT_DIR/apps/api/go.sum" ]; then
+    echo -e "${color_yellow}[!] Backend detectado sem dependências (go.sum).${color_reset}"
+    dirty=1
+  fi
+  
+  if [ "$dirty" -eq 1 ]; then
+    echo ""
+    echo "Parece que o ambiente não está totalmente configurado."
+    read -rp "Deseja rodar a auto-configuração (instalar deps)? (Y/n): " ans
+    if [[ ! "$ans" =~ ^[Nn]$ ]]; then
+      echo "Iniciando auto-configuração..."
+      if command -v npm >/dev/null; then
+        echo "Instalando dependências do frontend..."
+        (cd "$ROOT_DIR/apps/frontend" && npm install)
+      fi
+      if command -v go >/dev/null; then
+        echo "Baixando dependências do backend..."
+        (cd "$ROOT_DIR/apps/api" && go mod tidy)
+      fi
+      pause
+    fi
+  fi
+}
+
+# MAIN EXECUTION
+ensure_linux_fs
+install_requirements  # Auto-install missing tools
+check_dirty_env       # Auto-fix project deps
 main_menu
 

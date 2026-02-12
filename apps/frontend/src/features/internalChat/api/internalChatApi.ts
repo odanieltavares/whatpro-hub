@@ -68,12 +68,14 @@ interface ApiErrorResponse {
 // BASE FETCH
 // =============================================================================
 
+import { tokenStorage } from '@/utils/tokenStorage';
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem('auth_token');
-  
+  const token = tokenStorage.getToken();
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -146,7 +148,7 @@ export const roomsApi = {
     if (params?.q) searchParams.set('q', params.q);
     if (params?.cursor) searchParams.set('cursor', params.cursor);
     if (params?.limit) searchParams.set('limit', String(params.limit));
-    
+
     const query = searchParams.toString();
     return apiFetch(`/accounts/${accountId}/internal-chat/rooms${query ? `?${query}` : ''}`);
   },
@@ -224,7 +226,7 @@ export const messagesApi = {
     if (params?.cursor) searchParams.set('cursor', params.cursor);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.dir) searchParams.set('dir', params.dir);
-    
+
     const query = searchParams.toString();
     return apiFetch(
       `/accounts/${accountId}/internal-chat/rooms/${roomId}/messages${query ? `?${query}` : ''}`

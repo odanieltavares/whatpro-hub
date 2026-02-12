@@ -7,6 +7,7 @@ import SettingsPage from "@/features/settings/SettingsPage";
 import LoginPage from "@/features/auth/LoginPage";
 import { InternalChatPage } from "@/features/internalChat";
 import { SandboxPage } from "@/features/chat/pages/SandboxPage";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 export const router = createBrowserRouter([
   {
@@ -15,15 +16,27 @@ export const router = createBrowserRouter([
   },
   {
     path: "/chat",
-    element: <InternalChatPage />,
+    element: (
+      <RequireAuth>
+        <InternalChatPage />
+      </RequireAuth>
+    ),
   },
   {
     path: "/chat/sandbox",
-    element: <SandboxPage />,
+    element: (
+      <RequireAuth>
+        <SandboxPage />
+      </RequireAuth>
+    ),
   },
   {
     path: "/",
-    element: <MainLayout />,
+    element: (
+      <RequireAuth>
+        <MainLayout />
+      </RequireAuth>
+    ),
     children: [
       {
         index: true,
