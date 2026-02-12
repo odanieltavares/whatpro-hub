@@ -77,8 +77,8 @@ docs/chatwoot_demo_generator/
 
 
 # AI Agents (credentials/tokens)
-.claude/
-.gemini/
+# .claude/
+# .gemini/
 
 # Swagger (Keep generated docs)
 !apps/api/docs/
