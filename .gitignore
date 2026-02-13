@@ -82,3 +82,4 @@ docs/chatwoot_demo_generator/
 
 # Swagger (Keep generated docs)
 !apps/api/docs/
+__temp/
