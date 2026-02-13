@@ -1,0 +1,124 @@
+
+# ============================================================================
+# UI & LANGUAGE HELPERS
+# ============================================================================
+
+LANGUAGE="en"
+
+select_language() {
+  echo ""
+  echo "Select Language / Selecione o Idioma:"
+  echo "1) English (Default)"
+  echo "2) Português (Brasil)"
+  read -rp "> " lang_opt
+  if [ "$lang_opt" = "2" ]; then
+    LANGUAGE="pt"
+  else
+    LANGUAGE="en"
+  fi
+  init_strings
+}
+
+init_strings() {
+  if [ "$LANGUAGE" = "pt" ]; then
+    # PT-BR Strings
+    TXT_MENU_TITLE="MENU PRINCIPAL"
+    TXT_OPT_INFRA="Configuração de Infra & OS"
+    TXT_OPT_DOCKER="Configuração Docker"
+    TXT_OPT_APP="Deploy da Aplicação"
+    TXT_OPT_DATA="Dados & Conectividade"
+    TXT_OPT_REPO="Repositório & Manutenção"
+    TXT_OPT_EXIT="Sair"
+    
+    TXT_INFRA_TITLE="» INFRA E SISTEMA OPERACIONAL"
+    TXT_INFRA_CHECK="Verificar Requisitos do Sistema"
+    TXT_INFRA_DEPS="Gerenciar Dependências (Go/Node/Docker)"
+    TXT_INFRA_FS="Garantir Sistema de Arquivos Linux"
+    TXT_INFRA_BOOT="Verificação de Bootstrap (Ferramentas)"
+    
+    TXT_WARN_ANALYSIS="⚠️  ANÁLISE PRÉVIA"
+    TXT_LBL_CURRENT="Estado Atual:"
+    TXT_LBL_ACTION="Ação Pretendida:"
+    TXT_LBL_IMPACT="Impacto:"
+    TXT_CONFIRM="Deseja prosseguir?"
+    
+  else
+    # EN Strings
+    TXT_MENU_TITLE="MAIN MENU"
+    TXT_OPT_INFRA="Environment Setup (OS/Docker)"
+    TXT_OPT_DOCKER="Docker Configuration"
+    TXT_OPT_APP="App Deployment (Dev/Prod)"
+    TXT_OPT_DATA="Data & Connectivity"
+    TXT_OPT_REPO="Repo & Maintenance (Backup/Update)"
+    TXT_OPT_EXIT="Exit"
+    
+    TXT_INFRA_TITLE="» INFRA & OS SETUP"
+    TXT_INFRA_CHECK="Check System Requirements"
+    TXT_INFRA_DEPS="Manage Dependencies (Go/Node/Docker)"
+    TXT_INFRA_FS="Ensure Linux Filesystem"
+    TXT_INFRA_BOOT="Bootstrap Check (Permission/Tools)"
+    
+    TXT_WARN_ANALYSIS="⚠️  PRE-ACTION ANALYSIS"
+    TXT_LBL_CURRENT="Current State:"
+    TXT_LBL_ACTION="Intended Action:"
+    TXT_LBL_IMPACT="Impact:"
+    TXT_CONFIRM="Do you want to proceed?"
+  fi
+}
+
+# Generic Analyzer for Safety/Idempotency
+# Usage: analyze_action "Resource Name" "Check Command" "Install Command" "Destructive? (true/false)"
+analyze_action() {
+  local resource="$1"
+  local check_cmd="$2"
+  local action_desc="$3"
+  local is_destructive="$4"
+  
+  local state="MISSING"
+  local state_color="$color_red"
+  local impact="SAFE"
+  local impact_color="$color_green"
+  
+  echo ""
+  echo -e "${color_yellow}------------------------------------------------------------${color_reset}"
+  echo -e "${TXT_WARN_ANALYSIS}"
+  echo -e "${color_yellow}------------------------------------------------------------${color_reset}"
+  
+  # Execute check command
+  if eval "$check_cmd" >/dev/null 2>&1; then
+    state="FOUND / INSTALLED"
+    state_color="$color_green"
+    
+    # If found, action might differ
+    impact="SKIP (Idempotent) or UPDATE"
+    impact_color="$color_blue"
+    
+    if [ "$is_destructive" = "true" ]; then
+        impact="OVERWRITE (Destructive!)"
+        impact_color="$color_red"
+    fi
+  fi
+  
+  echo -e "${TXT_LBL_CURRENT} ${state_color}${state}${color_reset} ($resource)"
+  echo -e "${TXT_LBL_ACTION} ${color_cyan}${action_desc}${color_reset}"
+  echo -e "${TXT_LBL_IMPACT} ${impact_color}${impact}${color_reset}"
+  echo ""
+  
+  read -rp "${TXT_CONFIRM} (y/N): " ans
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    echo "Cancelled."
+    return 1
+  fi
+  return 0
+}
+
+# Wrapper for specific commonly used checks
+confirm_docker_deploy() {
+  local env_type="$1"
+  analyze_action "Stack $env_type" "docker stack ls | grep -q whatpro-$env_type || docker compose -p whatpro-$env_type ps | grep -q Up" "Deploy/Update Stack" "false"
+}
+
+confirm_db_reset() {
+  analyze_action "Database Data" "docker exec -i \$(get_pg_container dev) psql -U postgres -c '\dt' | grep -q users" "Seed/Reset Data" "true"
+}
+

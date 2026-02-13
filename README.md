@@ -33,7 +33,18 @@ WhatPro Hub uses a **Modular Monolith** architecture designed for scalability an
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### ⚡ Quick Install (Recommended)
+
+Use our fail-proof installer to set up the entire environment (infra, docker, apps) automatically:
+
+```bash
+cd installer
+bash whatpro-setup
+```
+
+[Read the Full Installation Guide](installer/INSTALL.md)
+
+### Manual Prerequisites
 
 - **Go 1.22+**
 - **Docker & Docker Compose**

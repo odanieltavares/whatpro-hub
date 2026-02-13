@@ -10,7 +10,14 @@ ENV_DIR="${WHATPRO_SETUP_ENV_DIR:-$DOCKER_DIR/envs}"
 color_yellow="\033[33m"
 color_green="\033[32m"
 color_red="\033[31m"
+color_blue="\033[34m"
+color_magenta="\033[35m"
+color_cyan="\033[36m"
 color_reset="\033[0m"
+
+GITHUB_REPO="odanieltavares/whatpro-hub"
+GITHUB_BRANCH="main"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}"
 
 PREVIEW_PORT_DEFAULT=8099
 PREVIEW_PORT_ALT=8089
@@ -40,14 +47,14 @@ PLATFORM="$(detect_platform)"
 
 print_title() {
   clear || true
-  echo -e "${color_yellow} _       _           _                                 ${color_reset}"
-  echo -e "${color_yellow}| |     | |         | |                                ${color_reset}"
-  echo -e "${color_yellow}| | __ _| |_ ___  __| | ___  ___                       ${color_reset}"
-  echo -e "${color_yellow}| |/ _\` | __/ _ \\/ _\` |/ _ \\/ __|                      ${color_reset}"
-  echo -e "${color_yellow}| | (_| | ||  __/ (_| |  __/\\__ \\                      ${color_reset}"
-  echo -e "${color_yellow}|_|\\__,_|\\__\\___|\\__,_|\\___||___/                      ${color_reset}"
-  echo -e "${color_yellow}           WHATPRO SETUP                                ${color_reset}"
-  echo -e "${color_yellow}============================================================${color_reset}"
+  # "WHATPRO SETUP" (Standard Font - Compact)
+  echo -e "${color_yellow} __          __  _           _    _____                       ${color_reset}"
+  echo -e "${color_yellow} \\ \\        / / | |         | |  |  __ \\                      ${color_reset}"
+  echo -e "${color_yellow}  \\ \\  /\\  / /__| |__   __ _| |_ | |__) |_ __ ___             ${color_reset}"
+  echo -e "${color_yellow}   \\ \\/  \\/ / _ \\ '_ \\ / _\` | __||  ___/| '__/ _ \\            ${color_reset}"
+  echo -e "${color_yellow}    \\  /\\  /  __/ | | | (_| | |_ | |    | | | (_) |           ${color_reset}"
+  echo -e "${color_yellow}     \\/  \\/ \\___|_| |_|\\__,_|\\__||_|    |_|  \\___/  SETUP     ${color_reset}"
+  echo -e "${color_yellow}================================================================${color_reset}"
 }
 
 pause() {
@@ -64,6 +71,47 @@ require_cmd() {
 
 ensure_env_dir() {
   mkdir -p "$ENV_DIR"
+}
+
+download_file() {
+  local url="$1"
+  local dest="$2"
+  local desc="$3"
+  
+  if [ -f "$dest" ]; then
+    return 0
+  fi
+  
+  echo -e "${color_cyan}Downloading ${desc}...${color_reset}"
+  mkdir -p "$(dirname "$dest")"
+  
+  if command -v curl >/dev/null 2>&1; then
+    if ! curl -fsSL "$url" -o "$dest"; then
+      echo -e "${color_red}Failed to download $url${color_reset}"
+      return 1
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if ! wget -q "$url" -O "$dest"; then
+      echo -e "${color_red}Failed to download $url${color_reset}"
+      return 1
+    fi
+  else
+    echo -e "${color_red}curl or wget required for self-repair${color_reset}"
+    return 1
+  fi
+  echo -e "${color_green}OK${color_reset}"
+}
+
+ensure_installer_assets() {
+  # Ensure we have the basic file structure for independent execution
+  if [ ! -f "$STACKS_JSON" ]; then
+    echo -e "${color_yellow}Missing stacks.json. Attempting to download...${color_reset}"
+    download_file "${GITHUB_RAW_URL}/deploy/docker/stacks.json" "$STACKS_JSON" "Docker Stacks Definition"
+  fi
+  
+  if [ ! -d "$DOCKER_DIR/templates/defaults" ] && [ ! -d "$DOCKER_DIR/templates/sets" ]; then
+     echo -e "${color_yellow}Note: Templates directory is empty. Some features may need network to fetch assets.${color_reset}"
+  fi
 }
 
 print_platform_checklist() {
@@ -380,9 +428,51 @@ PY
 }
 
 install_requirements() {
-  echo "Redirecionando para o menu de instalação..."
-  pause
-  dev_requirements_menu
+  echo -e "${color_yellow}=== Checking System Bootstrap Requirements ===${color_reset}"
+  
+  # 1. Check Permissions (Sudo)
+  if [ "$EUID" -ne 0 ]; then
+     if ! command -v sudo >/dev/null 2>&1; then
+       echo -e "${color_red}Error: This script requires 'sudo' or root privileges.${color_reset}"
+       exit 1
+     fi
+     # Validate sudo credentials early
+     sudo -v || exit 1
+  fi
+
+  # 2. Check Package Manager (for Linux/WSL)
+  local pkg_mgr=""
+  if [ "$PLATFORM" = "linux" ] || [ "$PLATFORM" = "wsl" ]; then
+    if command -v apt-get >/dev/null 2>&1; then
+       pkg_mgr="apt-get"
+    fi
+  fi
+
+  # 3. Check/Install Curl (Essential for downloading assets)
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+     echo -e "${color_yellow}Missing curl/wget. Attempting to install curl...${color_reset}"
+     if [ "$pkg_mgr" = "apt-get" ]; then
+        sudo apt-get update && sudo apt-get install -y curl
+     elif [ "$PLATFORM" = "macos" ] && command -v brew >/dev/null 2>&1; then
+        brew install curl
+     else
+        echo -e "${color_red}Please install 'curl' manually to proceed.${color_reset}"
+        exit 1
+     fi
+  fi
+
+  # 4. Check/Install Git (Essential for some ops)
+  if ! command -v git >/dev/null 2>&1; then
+     install_git
+  fi
+
+  # 5. Check/Install Python3 (Essential for logic)
+  if ! command -v python3 >/dev/null 2>&1; then
+     install_python
+  fi
+
+  echo -e "${color_green}Bootstrap check passed!${color_reset}"
+  sleep 1
 }
 
 check_requirements() {
@@ -1998,6 +2088,71 @@ PY
   echo -e "${color_green}Templates traduzidos para pt-BR (base). Revise se necessário.${color_reset}"
 }
 
+seed_database_wizard() {
+  local mode="$1"
+  local cid
+  cid=$(get_pg_container "$mode")
+  if [ -z "$cid" ]; then
+    echo -e "${color_red}pgvector container not found${color_reset}"
+    return 1
+  fi
+  
+  echo -e "${color_yellow}${TXT_SEED_TITLE}${color_reset}"
+  echo "${TXT_SEED_DESC}"
+  echo ""
+  
+  # Analyze first
+  analyze_action "Seed Data" "docker exec -i $cid psql -U postgres -d whatpro_hub -c \"SELECT 1 FROM users WHERE email='demo@whatpro.com'\" | grep -q 1" "Insert Demo Data" "false" || return 0
+  
+  # Corrected SQL with JSONB features and NO account_entitlements
+  local sql="
+-- Account (Upsert)
+INSERT INTO accounts (chatwoot_id, name, locale, domain, support_email, status, features, created_at, updated_at)
+VALUES (9999, 'Demo Company', 'pt_BR', 'demo.whatpro.com', 'demo@whatpro.com', 'active', 
+  '{\"max_agents\": 50, \"max_inboxes\": 10, \"max_teams\": 99, \"max_integrations\": 10, \"monthly_messages\": 100000, \"kanban_enabled\": true}'::jsonb, 
+  NOW(), NOW())
+ON CONFLICT (chatwoot_id) DO UPDATE 
+SET name = EXCLUDED.name, features = EXCLUDED.features;
+
+-- User (Upsert)
+INSERT INTO users (chatwoot_id, account_id, email, name, avatar_url, chatwoot_role, whatpro_role, created_at, updated_at)
+VALUES (8888, (SELECT id FROM accounts WHERE chatwoot_id = 9999 LIMIT 1), 'demo@whatpro.com', 'Demo User', 'https://ui-avatars.com/api/?name=Demo+User', 'administrator', 'super_admin', NOW(), NOW())
+ON CONFLICT (email) DO UPDATE 
+SET whatpro_role = EXCLUDED.whatpro_role;
+
+-- Team (Upsert)
+INSERT INTO teams (account_id, chatwoot_id, name, description, allow_auto_assign, created_at, updated_at)
+VALUES ((SELECT id FROM accounts WHERE chatwoot_id = 9999 LIMIT 1), 7777, 'Sales Team', 'High performance sales', true, NOW(), NOW())
+ON CONFLICT (chatwoot_id) DO NOTHING;
+
+-- Provider (Upsert)
+INSERT INTO providers (account_id, name, type, base_url, instance_name, status, api_key_encrypted, created_at, updated_at)
+VALUES ((SELECT id FROM accounts WHERE chatwoot_id = 9999 LIMIT 1), 'Evolution Demo', 'evolution', 'https://api.evolution.demo', 'demo_instance', 'connected', 'encrypted_key_placeholder', NOW(), NOW())
+ON CONFLICT (account_id, name) DO NOTHING;
+"
+  
+  echo "Running SQL..."
+  echo "$sql" | docker exec -i "$cid" psql -U postgres -d whatpro_hub
+  echo -e "${color_green}${TXT_SEED_SUCCESS}${color_reset}"
+}
+
+connect_chatwoot_wizard() {
+  echo -e "${color_yellow}=== CONNECT HUB <-> CHATWOOT ===${color_reset}"
+  echo "This wizard requires both Hub API and Chatwoot to be running."
+  echo "It will:"
+  echo "1. Verify Chatwoot connectivity"
+  echo "2. Create a Supervisor Agent in Chatwoot (if needed)"
+  echo "3. Generate an API Access Token"
+  echo "4. Configure the Hub to use this token"
+  echo ""
+  read -rp "Not fully implemented. Proceed with placeholder? (y/N): " ans
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+     echo "Connecting..."
+     sleep 1
+     echo -e "${color_green}Successfully simulated connection!${color_reset}"
+  fi
+}
+
 post_deploy_chatwoot_actions() {
   local mode="$1"
   read -rp "Aplicar unlock enterprise agora? (y/N): " ans_enterprise
@@ -2193,8 +2348,6 @@ install_docker() {
       return 1
       ;;
     wsl)
-      echo "Para WSL, você tem duas opções:"
-    wsl)
       echo "Para WSL (Simulação VPS), você tem duas opções:"
       echo "1) Instalar Docker Engine nativo no Ubuntu (RECOMENDADO / VPS MODE)"
       echo "   - Performance superior, ambiente fiel à produção."
@@ -2213,7 +2366,6 @@ install_docker() {
         return 0
       fi
       echo "Instalando Docker Nativo (VPS Mode)..."
-      ;;
       ;&  # Fall through to linux case
     linux)
       echo "Instalando Docker Engine..."
@@ -2572,75 +2724,439 @@ dev_requirements_menu() {
 }
 
 
+
+
+# ============================================================================
+# SAFETY & MAINTENANCE FUNCTIONS
+# ============================================================================
+
+check_git_status() {
+  if command -v git >/dev/null 2>&1 && [ -d ".git" ]; then
+    local branch=$(git rev-parse --abbrev-ref HEAD)
+    local hash=$(git rev-parse --short HEAD)
+    echo -e "${color_blue}Git: ${branch} @ ${hash}${color_reset}"
+  else
+    echo -e "${color_yellow}Git: Not a repository${color_reset}"
+  fi
+}
+
+backup_project_zip() {
+  echo -e "${color_yellow}=== PROJECT BACKUP ===${color_reset}"
+  local backup_name="whatpro-hub-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+  local backup_path="$ROOT_DIR/../$backup_name"
+  
+  echo "Creating backup of $ROOT_DIR..."
+  echo "Excluding: node_modules, .git, tmp, vendor, .cache"
+  
+  # Use tar directly for reliability on Linux/WSL
+  tar -czf "$backup_path" \
+      --exclude="node_modules" \
+      --exclude=".git" \
+      --exclude="tmp" \
+      --exclude="vendor" \
+      --exclude=".cache" \
+      --exclude="*.tar.gz" \
+      -C "$(dirname "$ROOT_DIR")" "$(basename "$ROOT_DIR")"
+      
+  if [ -f "$backup_path" ]; then
+    echo -e "${color_green}Backup created successfully!${color_reset}"
+    echo "Location: $backup_path"
+    echo "Size: $(du -h "$backup_path" | cut -f1)"
+  else
+    echo -e "${color_red}Backup failed!${color_reset}"
+  fi
+  pause
+}
+
+update_repo_safe() {
+  echo -e "${color_yellow}=== GIT UPDATE ===${color_reset}"
+  
+  if [ ! -d ".git" ]; then
+    echo -e "${color_red}Error: Not a git repository.${color_reset}"
+    return 1
+  fi
+  
+  echo "Checking for updates..."
+  git fetch origin
+  
+  local local_hash=$(git rev-parse HEAD)
+  local remote_hash=$(git rev-parse @{u})
+  
+  if [ "$local_hash" = "$remote_hash" ]; then
+    echo -e "${color_green}Already up to date.${color_reset}"
+    pause
+    return 0
+  fi
+  
+  echo -e "${color_blue}Update available!${color_reset}"
+  echo "Local:  $(git rev-parse --short HEAD)"
+  echo "Remote: $(git rev-parse --short @{u})"
+  echo ""
+  echo "⚠️  WARNING: This will pull changes from remote."
+  echo "Any uncommitted local changes might cause conflicts."
+  read -rp "Proceed with 'git pull'? (y/N): " ans
+  
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    # Safety stash
+    if [ -n "$(git status --porcelain)" ]; then
+       echo "Stashing local changes..."
+       git stash save "Auto-stash before update $(date)"
+    fi
+    
+    if git pull; then
+      echo -e "${color_green}Update successful!${color_reset}"
+      echo "Reloading installer..."
+      exec "$0"
+    else
+      echo -e "${color_red}Update failed. Check git status.${color_reset}"
+    fi
+  else
+    echo "Update canceled."
+  fi
+  pause
+}
+
+# ============================================================================
+ 
+
+# ============================================================================
+# UI & LANGUAGE HELPERS
+# ============================================================================
+
+LANGUAGE="en"
+
+select_language() {
+  echo ""
+  echo "Select Language / Selecione o Idioma:"
+  echo "1) English (Default)"
+  echo "2) Português (Brasil)"
+  read -rp "> " lang_opt
+  if [ "$lang_opt" = "2" ]; then
+    LANGUAGE="pt"
+  else
+    LANGUAGE="en"
+  fi
+  init_strings
+}
+
+init_strings() {
+  if [ "$LANGUAGE" = "pt" ]; then
+    # PT-BR Strings
+    TXT_MENU_TITLE="MENU PRINCIPAL"
+    TXT_OPT_INFRA="Configuração de Infra & OS"
+    TXT_OPT_DOCKER="Configuração Docker"
+    TXT_OPT_APP="Deploy da Aplicação"
+    TXT_OPT_DATA="Dados & Conectividade"
+    TXT_OPT_REPO="Repositório & Manutenção"
+    TXT_OPT_EXIT="Sair"
+    
+    TXT_INFRA_TITLE="» INFRA E SISTEMA OPERACIONAL"
+    TXT_INFRA_CHECK="Verificar Requisitos do Sistema"
+    TXT_INFRA_DEPS="Gerenciar Dependências (Go/Node/Docker)"
+    TXT_INFRA_FS="Garantir Sistema de Arquivos Linux"
+    TXT_INFRA_BOOT="Verificação de Bootstrap (Ferramentas)"
+    
+    TXT_DOCKER_TITLE="» AMBIENTE DOCKER"
+    TXT_DOCKER_GEN_DEV="Gerar .env (DEV)"
+    TXT_DOCKER_GEN_PROD="Gerar .env (PROD)"
+    TXT_DOCKER_HEALTH="Validar Saúde (Portas)"
+    TXT_DOCKER_NET="Configurar Redes (Bridge/Swarm)"
+
+    TXT_APP_TITLE="» DEPLOY DA APLICAÇÃO"
+    TXT_APP_DEV="Deploy Stack DEV"
+    TXT_APP_PROD="Deploy Stack PROD"
+    TXT_APP_STOP="Parar Stacks"
+    TXT_APP_UPDATE="Atualizar/Reiniciar Stacks"
+    TXT_APP_LIST="Listar Stacks Rodando"
+
+    TXT_DATA_TITLE="» DADOS & CONFIGURAÇÃO"
+    TXT_DATA_BACKUP="Backup do Banco de Dados"
+    TXT_DATA_RESTORE="Restaurar Banco de Dados"
+    TXT_DATA_SEED="Popular Dados de Teste (Seed)"
+    TXT_DATA_CHATWOOT="Configurar Chatwoot (Templates)"
+    TXT_DATA_CONNECT="Conectar Hub <-> Chatwoot"
+
+    TXT_REPO_TITLE="» REPOSITÓRIO & MANUTENÇÃO"
+    TXT_REPO_UPDATE="Atualizar Repositório (Git Pull)"
+    TXT_REPO_BACKUP="Backup do Projeto (Zip Completo)"
+    TXT_REPO_SELF="Auto-Atualizar Instalador"
+    TXT_REPO_REFRESH="🔄 Recarregar Instalador (Refresh)"
+    
+    TXT_WARN_ANALYSIS="⚠️  ANÁLISE PRÉVIA"
+    TXT_LBL_CURRENT="Estado Atual:"
+    TXT_LBL_ACTION="Ação Pretendida:"
+    TXT_LBL_IMPACT="Impacto:"
+    TXT_CONFIRM="Deseja prosseguir?"
+    TXT_CANCEL="Cancelado."
+    
+    TXT_SEED_TITLE="=== POPULAR DADOS (SEED) ==="
+    TXT_SEED_DESC="Isso irá inserir: Conta Demo, Usuário Admin, Time e Provider Mock."
+    TXT_SEED_SUCCESS="Dados inseridos com sucesso!"
+    
+  else
+    # EN Strings
+    TXT_MENU_TITLE="MAIN MENU"
+    TXT_OPT_INFRA="Environment Setup (OS/Docker)"
+    TXT_OPT_DOCKER="Docker Configuration"
+    TXT_OPT_APP="App Deployment (Dev/Prod)"
+    TXT_OPT_DATA="Data & Connectivity"
+    TXT_OPT_REPO="Repo & Maintenance (Backup/Update)"
+    TXT_OPT_EXIT="Exit"
+    
+    TXT_INFRA_TITLE="» INFRA & OS SETUP"
+    TXT_INFRA_CHECK="Check System Requirements"
+    TXT_INFRA_DEPS="Manage Dependencies (Go/Node/Docker)"
+    TXT_INFRA_FS="Ensure Linux Filesystem"
+    TXT_INFRA_BOOT="Bootstrap Check (Permission/Tools)"
+    
+    TXT_DOCKER_TITLE="» DOCKER ENVIRONMENT"
+    TXT_DOCKER_GEN_DEV="Generate DEV .env"
+    TXT_DOCKER_GEN_PROD="Generate PROD .env"
+    TXT_DOCKER_HEALTH="Validate Health (Ports)"
+    TXT_DOCKER_NET="Setup Networks (Bridged/Swarm)"
+
+    TXT_APP_TITLE="» APPLICATION DEPLOYMENT"
+    TXT_APP_DEV="Deploy DEV Stack"
+    TXT_APP_PROD="Deploy PROD Stack"
+    TXT_APP_STOP="Stop Stacks"
+    TXT_APP_UPDATE="Update/Restart Stacks"
+    TXT_APP_LIST="List Running Stacks"
+
+    TXT_DATA_TITLE="» DATA & CONFIGURATION"
+    TXT_DATA_BACKUP="Backup Database"
+    TXT_DATA_RESTORE="Restore Database"
+    TXT_DATA_SEED="Seed Test Data"
+    TXT_DATA_CHATWOOT="Chatwoot Config (Templates)"
+    TXT_DATA_CONNECT="Connect Hub <-> Chatwoot"
+
+    TXT_REPO_TITLE="» REPOSITORY & MAINTENANCE"
+    TXT_REPO_UPDATE="Update Repo (Git Pull)"
+    TXT_REPO_BACKUP="Backup Project (Full ZIP)"
+    TXT_REPO_SELF="Self-Update Installer Script"
+    TXT_REPO_REFRESH="🔄 Refresh Installer"
+    
+    TXT_WARN_ANALYSIS="⚠️  PRE-ACTION ANALYSIS"
+    TXT_LBL_CURRENT="Current State:"
+    TXT_LBL_ACTION="Intended Action:"
+    TXT_LBL_IMPACT="Impact:"
+    TXT_CONFIRM="Do you want to proceed?"
+    TXT_CANCEL="Cancelled."
+    
+    TXT_SEED_TITLE="=== SEEDING DATABASE (Test Data) ==="
+    TXT_SEED_DESC="This will insert: Demo Account, Admin User, Team, and Mock Provider."
+    TXT_SEED_SUCCESS="Seed completed successfully!"
+  fi
+}
+
+# Generic Analyzer for Safety/Idempotency
+# Usage: analyze_action "Resource Name" "Check Command" "Install Command" "Destructive? (true/false)"
+analyze_action() {
+  local resource="$1"
+  local check_cmd="$2"
+  local action_desc="$3"
+  local is_destructive="$4"
+  
+  local state="MISSING"
+  local state_color="$color_red"
+  local impact="SAFE"
+  local impact_color="$color_green"
+  
+  echo ""
+  echo -e "${color_yellow}------------------------------------------------------------${color_reset}"
+  echo -e "${TXT_WARN_ANALYSIS}"
+  echo -e "${color_yellow}------------------------------------------------------------${color_reset}"
+  
+  # Execute check command
+  if eval "$check_cmd" >/dev/null 2>&1; then
+    state="FOUND / INSTALLED"
+    state_color="$color_green"
+    
+    # If found, action might differ
+    impact="SKIP (Idempotent) or UPDATE"
+    impact_color="$color_blue"
+    
+    if [ "$is_destructive" = "true" ]; then
+        impact="OVERWRITE (Destructive!)"
+        impact_color="$color_red"
+    fi
+  fi
+  
+  echo -e "${TXT_LBL_CURRENT} ${state_color}${state}${color_reset} ($resource)"
+  echo -e "${TXT_LBL_ACTION} ${color_cyan}${action_desc}${color_reset}"
+  echo -e "${TXT_LBL_IMPACT} ${impact_color}${impact}${color_reset}"
+  echo ""
+  
+  read -rp "${TXT_CONFIRM} (y/N): " ans
+  if [[ ! "$ans" =~ ^[Yy]$ ]]; then
+    echo "Cancelled."
+    return 1
+  fi
+  return 0
+}
+
+# Wrapper for specific commonly used checks
+confirm_docker_deploy() {
+  local env_type="$1"
+  analyze_action "Stack $env_type" "docker stack ls | grep -q whatpro-$env_type || docker compose -p whatpro-$env_type ps | grep -q Up" "Deploy/Update Stack" "false"
+}
+
+confirm_db_reset() {
+  analyze_action "Database Data" "docker exec -i \$(get_pg_container dev) psql -U postgres -c '\dt' | grep -q users" "Seed/Reset Data" "true"
+}
+
+# NEW SUB-MENUS
+# ============================================================================
+
+menu_infra() {
+  while true; do
+    clear
+    print_title
+    echo -e "${color_yellow}${TXT_INFRA_TITLE}${color_reset}"
+    echo "1) 📋 ${TXT_INFRA_CHECK}"
+    echo "2) 📦 ${TXT_INFRA_DEPS}"
+    echo "3) 📁 ${TXT_INFRA_FS}"
+    echo "4) 🛡️  ${TXT_INFRA_BOOT}"
+    echo ""
+    echo "0) ${TXT_OPT_EXIT}"
+    read -rp "Option: " opt
+    case "$opt" in
+      1) check_requirements; check_resources; print_platform_checklist; pause ;;
+      2) dev_requirements_menu ;;
+      3) ensure_linux_fs ;;
+      4) install_requirements; pause ;;
+      0) return ;;
+      *) echo "Invalid option"; sleep 1 ;;
+    esac
+  done
+}
+
+menu_docker() {
+  while true; do
+    clear
+    print_title
+    echo -e "${color_yellow}${TXT_DOCKER_TITLE}${color_reset}"
+    echo "1) 🛠️  ${TXT_DOCKER_GEN_DEV}"
+    echo "2) 🏭 ${TXT_DOCKER_GEN_PROD}"
+    echo "3) 🔍 ${TXT_DOCKER_HEALTH}"
+    echo "4) 🔌 ${TXT_DOCKER_NET}"
+    echo ""
+    echo "0) ${TXT_OPT_EXIT}"
+    read -rp "Option: " opt
+    case "$opt" in
+      1) write_env "$DOCKER_DIR/.env.dev" "dev"; init_stack_envs "dev"; pause ;;
+      2) write_env "$DOCKER_DIR/.env.prod" "prod"; init_stack_envs "prod"; pause ;;
+      3) check_ports 80 443 4000 8080 8081 9000; pause ;;
+      4) ensure_networks_dev; ensure_networks_prod; echo "Done"; pause ;;
+      0) return ;;
+      *) echo "Invalid option"; sleep 1 ;;
+    esac
+  done
+}
+
+menu_app() {
+  while true; do
+    clear
+    print_title
+    echo -e "${color_yellow}${TXT_APP_TITLE}${color_reset}"
+    echo "1) ▶️  ${TXT_APP_DEV}"
+    echo "2) ▶️  ${TXT_APP_PROD}"
+    echo "3) ⏹️  ${TXT_APP_STOP}"
+    echo "4) 🔄 ${TXT_APP_UPDATE}"
+    echo "5) 📜 ${TXT_APP_LIST}"
+    echo ""
+    echo "0) ${TXT_OPT_EXIT}"
+    read -rp "Option: " opt
+    case "$opt" in
+      1) check_requirements; deploy_dev; pause ;;
+      2) check_requirements; deploy_prod; pause ;;
+      3) read -rp "Target (dev/prod): " t; remove_stacks "$t"; pause ;;
+      4) mode=$(prompt_mode) || continue; update_stacks "$mode"; pause ;;
+      5) mode=$(prompt_mode) || continue; list_stacks "$mode"; pause ;;
+      0) return ;;
+      *) echo "Invalid option"; sleep 1 ;;
+    esac
+  done
+}
+
+menu_data() {
+  while true; do
+    clear
+    print_title
+    echo -e "${color_yellow}${TXT_DATA_TITLE}${color_reset}"
+    echo "1) 💾 ${TXT_DATA_BACKUP}"
+    echo "2) ♻️  ${TXT_DATA_RESTORE}"
+    echo "3) 🌱 ${TXT_DATA_SEED}"
+    echo "4) 💬 ${TXT_DATA_CHATWOOT}"
+    echo "5) ⚡ ${TXT_DATA_CONNECT}"
+    echo ""
+    echo "0) ${TXT_OPT_EXIT}"
+    read -rp "Option: " opt
+    case "$opt" in
+      1) mode=$(prompt_mode) || continue; [ "$mode" = "prod" ] && backup_db_prod || backup_db_dev; pause ;;
+      2) mode=$(prompt_mode) || continue; [ "$mode" = "prod" ] && restore_db_prod || restore_db_dev; pause ;;
+      3) mode=$(prompt_mode) || continue; seed_database_wizard "$mode"; pause ;;
+      4) chatwoot_menu ;;
+      5) connect_chatwoot_wizard; pause ;;
+      0) return ;;
+      *) echo "Invalid option"; sleep 1 ;;
+    esac
+  done
+}
+
+menu_repo() {
+  while true; do
+    clear
+    print_title
+    echo -e "${color_yellow}${TXT_REPO_TITLE}${color_reset}"
+    check_git_status
+    echo ""
+    echo "1) 📥 ${TXT_REPO_UPDATE}"
+    echo "2) 📦 ${TXT_REPO_BACKUP}"
+    echo "3) 🔄 ${TXT_REPO_SELF}"
+    echo "4) ${TXT_REPO_REFRESH}"
+    echo ""
+    echo "0) ${TXT_OPT_EXIT}"
+    read -rp "Option: " opt
+    case "$opt" in
+      1) update_repo_safe ;;
+      2) backup_project_zip ;;
+      3) ensure_installer_assets; echo "Assets updated."; pause ;;
+      4) refresh_installer ;;
+      0) return ;;
+      *) echo "Invalid option"; sleep 1 ;;
+    esac
+  done
+}
+
 main_menu() {
+  ensure_installer_assets
+  select_language
+  
   while true; do
     print_title
-    echo "Configuração:"
-    echo "  PLATAFORMA=${PLATFORM}"
-    echo "  ROOT_DIR=${ROOT_DIR}"
-    echo "  DOCKER_DIR=${DOCKER_DIR}"
-    echo "  STACKS_JSON=${STACKS_JSON}"
+    warn_path_mismatch
+    check_git_status
+    
+    echo -e "${color_cyan}${TXT_MENU_TITLE}${color_reset}"
+    echo "1) 🖥️  ${TXT_OPT_INFRA}"
+    echo "2) 🐳 ${TXT_OPT_DOCKER}"
+    echo "3) 🚀 ${TXT_OPT_APP}"
+    echo "4) 🔌 ${TXT_OPT_DATA}"
+    echo "5) 📦 ${TXT_OPT_REPO}"
     echo ""
-    echo "1) Instalar DEV (docker compose)"
-    echo "2) Instalar PROD (docker swarm)"
-    echo "3) Validar DEV"
-    echo "4) Validar PROD"
-    echo "5) Remover stacks DEV"
-    echo "6) Remover stacks PROD"
-    echo "7) Listar stacks"
-    echo "8) Atualizar stack"
-    echo "9) Editar env"
-    echo "10) Backup do banco"
-    echo "11) Checklist da plataforma"
-    echo "12) Restaurar banco"
-    echo "13) Menu Chatwoot"
-    echo -e "${color_green}14) Instalar requisitos DEV${color_reset}"
-    echo "0) Sair"
-    read -rp "Selecione: " choice
+    echo "0) 🚪 ${TXT_OPT_EXIT}"
+    echo ""
+    read -rp "Select: " choice
+    
     case "$choice" in
-      1) check_requirements; check_resources; deploy_dev ;;
-      2) check_requirements; check_resources; deploy_prod ;;
-      3) validate_dev ;;
-      4) validate_prod ;;
-      5) remove_stacks dev ;;
-      6) remove_stacks prod ;;
-      7)
-        mode=$(prompt_mode) || { pause; continue; }
-        list_stacks "$mode"
-        ;;
-      8)
-        mode=$(prompt_mode) || { pause; continue; }
-        update_stacks "$mode"
-        ;;
-      9)
-        mode=$(prompt_mode) || { pause; continue; }
-        edit_env "$mode"
-        ;;
-      10)
-        mode=$(prompt_mode) || { pause; continue; }
-        if [ "$mode" = "prod" ]; then
-          backup_db_prod
-        else
-          backup_db_dev
-        fi
-        ;;
-      11)
-        print_platform_checklist
-        ;;
-      12)
-        mode=$(prompt_mode) || { pause; continue; }
-        if [ "$mode" = "prod" ]; then
-          restore_db_prod
-        else
-          restore_db_dev
-        fi
-        ;;
-      13) chatwoot_menu ;;
-      14) dev_requirements_menu ;;
+      1) menu_infra ;;
+      2) menu_docker ;;
+      3) menu_app ;;
+      4) menu_data ;;
+      5) menu_repo ;;
       0) exit 0 ;;
-      *) echo "Opção inválida"; sleep 1 ;;
+      *) echo "Invalid option"; sleep 1 ;;
     esac
-    pause
   done
 }
 

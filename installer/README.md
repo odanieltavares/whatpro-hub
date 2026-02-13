@@ -1,32 +1,21 @@
-# Whatpro Setup (Standalone Installer)
+# 🛠️ WhatPro Hub Installer
 
-This folder is a portable installer. You can copy it to any machine and run `whatpro-setup` without the rest of the repo.
+The official, self-contained infrastructure manager for WhatPro Hub.
 
-## How it works
-- Uses the `docker/` folder in this directory.
-- Reads `docker/stacks.json` to know which stacks to deploy.
-- Generates env files and per-stack overrides.
-- Can install, validate, update, remove, and backup.
+## 🌟 Features
 
-## Run
+- **Fail-Proof Bootstrap**: Auto-installs generic dependencies (Python, Git, Curl).
+- **Self-Repair**: Downloads missing assets from the remote repository.
+- **Modular Architecture**: Separates Infrastructure, Docker, App, and Data logic.
+- **Safety First**: Non-destructive defaults, project backups, and safe git updates.
+
+## 📖 documentation
+
+- [Full Installation Guide](INSTALL.md)
+- [Task Roadmap](../.agent/artifacts/task.md)
+
+## 🚀 Usage
+
 ```bash
-./whatpro-setup
-```
-
-## Custom paths (optional)
-```bash
-WHATPRO_SETUP_DOCKER_DIR=/opt/whatpro-setup/docker \
-WHATPRO_SETUP_STACKS_JSON=/opt/whatpro-setup/docker/stacks.json \
-./whatpro-setup
-```
-
-## Folder layout
-```
-installer/
-  whatpro-setup
-  docker/
-    compose.*.yml
-    stacks.json
-    .env.example
-    envs/
+bash whatpro-setup
 ```
