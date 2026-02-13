@@ -1371,7 +1371,8 @@ edit_env() {
 }
 
 backup_db_dev() {
-  echo "Backup database (dev)..."
+  verify_context "BACKUP DEV" "true" || return 1
+  echo "${TXT_DATA_BACKUP} (dev)..."
   local log_file="$ROOT_DIR/backups/backup.log"
   local cid
   cid=$(docker ps --filter "name=pgvector" --format '{{.ID}}' | head -n 1)
@@ -1398,7 +1399,8 @@ backup_db_dev() {
 }
 
 backup_db_prod() {
-  echo "Backup database (prod)..."
+  verify_context "BACKUP PROD" "true" || return 1
+  echo "${TXT_DATA_BACKUP} (prod)..."
   local log_file="$ROOT_DIR/backups/backup.log"
   local cid
   cid=$(docker ps --filter "label=com.docker.swarm.service.name=whatpro-hub_pgvector" --format '{{.ID}}' | head -n 1)
@@ -1490,7 +1492,8 @@ restore_db_prompt_method() {
 }
 
 restore_db_dev() {
-  echo "Restore database (dev)..."
+  verify_context "RESTORE DEV" "true" || return 1
+  echo "${TXT_DATA_RESTORE} (dev)..."
   local log_file="$ROOT_DIR/backups/restore.log"
   read -rp "Path to backup file (.sql, .dump, .sql.gz): " backup_file
   validate_backup_file "$backup_file" || return 1
@@ -1541,7 +1544,8 @@ restore_db_dev() {
 }
 
 restore_db_prod() {
-  echo "Restore database (prod)..."
+  verify_context "RESTORE PROD" "true" || return 1
+  echo "${TXT_DATA_RESTORE} (prod)..."
   local log_file="$ROOT_DIR/backups/restore.log"
   read -rp "Path to backup file (.sql, .dump, .sql.gz): " backup_file
   validate_backup_file "$backup_file" || return 1
@@ -1661,19 +1665,19 @@ get_chatwoot_plan() {
 chatwoot_menu() {
   while true; do
     print_title
-    echo "Menu Chatwoot"
-    echo "Versão (imagem): $(get_chatwoot_version)"
+    echo "${TXT_CW_TITLE}"
+    echo "${TXT_CW_VERSION} $(get_chatwoot_version)"
     echo "Preview: $(preview_status) (porta: $(get_preview_port))"
     echo "Set ativo: $(cat "$DOCKER_DIR/templates/ACTIVE_SET" 2>/dev/null || echo '(none)')"
     echo "Tipos (padrões):"
     preview_type_counts | sed 's/^/  - /'
-    echo "1) Unlock enterprise"
-    echo "2) Aplicar templates de e-mail"
-    echo "3) Selecionar set de templates"
-    echo "4) Preview templates"
-    echo "5) Regenerar preview agora"
-    echo "6) Traduzir templates para pt-BR"
-    echo "0) Voltar"
+    echo "1) ${TXT_CW_UNLOCK}"
+    echo "2) ${TXT_CW_TEMPLATES}"
+    echo "3) ${TXT_CW_SELECT}"
+    echo "4) ${TXT_CW_PREVIEW}"
+    echo "5) ${TXT_CW_REGEN}"
+    echo "6) ${TXT_CW_TRANS}"
+    echo "0) ${TXT_OPT_EXIT}"
     read -rp "Selecione: " choice
     case "$choice" in
       1)
@@ -1694,9 +1698,17 @@ chatwoot_menu() {
         preview_chatwoot_templates
         ;;
       5)
-        generate_preview_pages >/tmp/whatpro-preview-gen.log 2>&1 || true
+        # Check if generate_preview_pages works, otherwise use script
+        if declare -f generate_preview_pages >/dev/null; then
+             generate_preview_pages >/tmp/whatpro-preview-gen.log 2>&1 || true
+        else
+             # Fallback to script if function is missing/broken
+             local pscript="$ROOT_DIR/scripts/preview-chatwoot-templates.sh"
+             [ -x "$pscript" ] && PREVIEW_GENERATE_ONLY=1 "$pscript" >/tmp/whatpro-preview-gen.log 2>&1 || true
+        fi
+
         if [ -f "$DOCKER_DIR/templates/previews/index.html" ]; then
-          echo "Preview regenerado."
+          echo "${TXT_CW_REGEN} OK."
         else
           echo "Falha ao regenerar preview."
           [ -f /tmp/whatpro-preview-gen.log ] && tail -n 20 /tmp/whatpro-preview-gen.log || true
@@ -1991,6 +2003,7 @@ HTML
 }
 
 apply_chatwoot_email_templates() {
+  verify_context "APPLY TEMPLATES" "true" || return 1
   local mode="$1"
   local templates_dir="$DOCKER_DIR/templates"
   local mailer_dir="$templates_dir/chatwoot_mailer"
@@ -2090,6 +2103,7 @@ PY
 
 seed_database_wizard() {
   local mode="$1"
+  verify_context "SEED DATABASE" "true" || return 1
   local cid
   cid=$(get_pg_container "$mode")
   if [ -z "$cid" ]; then
@@ -2137,20 +2151,47 @@ ON CONFLICT (account_id, name) DO NOTHING;
 }
 
 connect_chatwoot_wizard() {
-  echo -e "${color_yellow}=== CONNECT HUB <-> CHATWOOT ===${color_reset}"
-  echo "This wizard requires both Hub API and Chatwoot to be running."
-  echo "It will:"
-  echo "1. Verify Chatwoot connectivity"
-  echo "2. Create a Supervisor Agent in Chatwoot (if needed)"
-  echo "3. Generate an API Access Token"
-  echo "4. Configure the Hub to use this token"
-  echo ""
-  read -rp "Not fully implemented. Proceed with placeholder? (y/N): " ans
-  if [[ "$ans" =~ ^[Yy]$ ]]; then
-     echo "Connecting..."
-     sleep 1
-     echo -e "${color_green}Successfully simulated connection!${color_reset}"
+  echo -e "${color_yellow}${TXT_CONN_TITLE}${color_reset}"
+  echo "${TXT_CONN_CHECK}"
+  
+  # 1. Identify Containers
+  local api_cid chatwoot_cid db_cid
+  api_cid=$(docker ps --filter "name=whatpro_api" --format "{{.ID}}" | head -n 1)
+  chatwoot_cid=$(docker ps --filter "name=chatwoot_app" --format "{{.ID}}" | head -n 1)
+  db_cid=$(get_pg_container "dev") # Try dev first, or prompt mode if needed? Actually we can try both or just find pgvector
+  if [ -z "$db_cid" ]; then
+    db_cid=$(docker ps --filter "name=pgvector" --format "{{.ID}}" | head -n 1)
   fi
+
+  if [ -z "$api_cid" ]; then echo -e "${color_red}❌ Hub API not found running.${color_reset}"; return 1; fi
+  if [ -z "$chatwoot_cid" ]; then echo -e "${color_red}❌ Chatwoot App not found running.${color_reset}"; return 1; fi
+  if [ -z "$db_cid" ]; then echo -e "${color_red}❌ Database not found running.${color_reset}"; return 1; fi
+
+  # 2. Get Env Vars
+  local internal_url public_url
+  internal_url=$(docker exec "$api_cid" printenv CHATWOOT_URL 2>/dev/null || echo "Unknown")
+  public_url=$(docker exec "$chatwoot_cid" printenv FRONTEND_URL 2>/dev/null || echo "Unknown")
+
+  echo ""
+  echo -e "🔹 ${color_cyan}${TXT_CONN_INTERNAL}${color_reset} ${internal_url}"
+  echo -e "🔹 ${color_cyan}${TXT_CONN_PUBLIC}${color_reset}   ${public_url}"
+  echo ""
+
+  # 3. Query Database
+  echo -e "${TXT_CONN_ACCOUNTS}"
+  local count
+  count=$(docker exec -i "$db_cid" psql -U postgres -d whatpro_hub -t -A -c "SELECT count(*) FROM accounts;" 2>/dev/null | tr -d '\r')
+  
+  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    echo -e "${color_yellow}${TXT_CONN_NONE}${color_reset}"
+  else
+    echo -e "${color_green}Total: ${count}${color_reset}"
+    echo ""
+    echo "${TXT_CONN_LIST}"
+    docker exec -i "$db_cid" psql -U postgres -d whatpro_hub -c "SELECT id, name, chatwoot_id, domain FROM accounts;"
+  fi
+  
+  echo ""
 }
 
 post_deploy_chatwoot_actions() {
@@ -2893,6 +2934,30 @@ init_strings() {
     TXT_SEED_DESC="Isso irá inserir: Conta Demo, Usuário Admin, Time e Provider Mock."
     TXT_SEED_SUCCESS="Dados inseridos com sucesso!"
     
+    TXT_CONN_TITLE="=== STATUS DE CONEXÃO CHATWOOT ==="
+    TXT_CONN_CHECK="Verificando conectividade..."
+    TXT_CONN_INTERNAL="Conexão Interna (Hub -> Chatwoot):"
+    TXT_CONN_PUBLIC="Endereço Público (Frontend):"
+    TXT_CONN_ACCOUNTS="Contas Conectadas:"
+    TXT_CONN_NONE="Nenhuma conta encontrada."
+    TXT_CONN_LIST="Listando contas (ID | Nome | Chatwoot ID | Domínio):"
+    
+    TXT_CTX_HEADER="🔍 CONTEXTO ATUAL"
+    TXT_CTX_ENV="Ambiente:"
+    TXT_CTX_DB="Banco de Dados:"
+    TXT_CTX_APPS="Apps Rodando:"
+    TXT_CTX_WARN="⚠️  ATENÇÃO: Você está prestes a modificar este ambiente."
+    TXT_CTX_PROCEED="Confirma a operação?"
+    
+    TXT_CW_TITLE="MENU CONFIGURAÇÃO CHATWOOT"
+    TXT_CW_VERSION="Versão (Imagem):"
+    TXT_CW_UNLOCK="Desbloquear Funcionalidades Enterprise"
+    TXT_CW_TEMPLATES="Aplicar Templates de E-mail"
+    TXT_CW_SELECT="Selecionar Set de Templates"
+    TXT_CW_PREVIEW="Pré-visualizar Templates"
+    TXT_CW_REGEN="Regenerar HTML do Preview"
+    TXT_CW_TRANS="Traduzir Templates para PT-BR"
+    
   else
     # EN Strings
     TXT_MENU_TITLE="MAIN MENU"
@@ -2945,6 +3010,30 @@ init_strings() {
     TXT_SEED_TITLE="=== SEEDING DATABASE (Test Data) ==="
     TXT_SEED_DESC="This will insert: Demo Account, Admin User, Team, and Mock Provider."
     TXT_SEED_SUCCESS="Seed completed successfully!"
+    
+    TXT_CONN_TITLE="=== CHATWOOT CONNECTION STATUS ==="
+    TXT_CONN_CHECK="Checking connectivity..."
+    TXT_CONN_INTERNAL="Internal Connection (Hub -> Chatwoot):"
+    TXT_CONN_PUBLIC="Public Address (Frontend):"
+    TXT_CONN_ACCOUNTS="Connected Accounts:"
+    TXT_CONN_NONE="No accounts found."
+    TXT_CONN_LIST="Listing accounts (ID | Name | Chatwoot ID | Domain):"
+    
+    TXT_CTX_HEADER="🔍 CURRENT CONTEXT"
+    TXT_CTX_ENV="Environment:"
+    TXT_CTX_DB="Database:"
+    TXT_CTX_APPS="Running Apps:"
+    TXT_CTX_WARN="⚠️  WARNING: You are about to modify this environment."
+    TXT_CTX_PROCEED="Confirm operation?"
+    
+    TXT_CW_TITLE="CHATWOOT CONFIG MENU"
+    TXT_CW_VERSION="Version (Image):"
+    TXT_CW_UNLOCK="Unlock Enterprise Features"
+    TXT_CW_TEMPLATES="Apply Email Templates"
+    TXT_CW_SELECT="Select Template Set"
+    TXT_CW_PREVIEW="Preview Templates"
+    TXT_CW_REGEN="Regenerate Preview HTML"
+    TXT_CW_TRANS="Translate Templates to PT-BR"
   fi
 }
 
