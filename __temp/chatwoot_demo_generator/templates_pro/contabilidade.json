@@ -1,0 +1,397 @@
+{
+  "nome": "Escritório de Contabilidade PRO",
+  "descricao": "Template completo com TODAS as features do Chatwoot para escritórios contábeis",
+  "num_contatos": 30,
+  "num_conversas": 45,
+  
+  "sla_policies": [
+    {
+      "nome": "SLA Padrão",
+      "descricao": "SLA para atendimentos normais",
+      "primeira_resposta_minutos": 30,
+      "proxima_resposta_minutos": 60,
+      "tempo_resolucao_minutos": 1440
+    },
+    {
+      "nome": "SLA Urgente",
+      "descricao": "SLA para demandas urgentes",
+      "primeira_resposta_minutos": 10,
+      "proxima_resposta_minutos": 30,
+      "tempo_resolucao_minutos": 480
+    }
+  ],
+  
+  "custom_roles": [
+    {
+      "nome": "Contador Sênior",
+      "descricao": "Acesso a todas as conversas e relatórios",
+      "permissoes": ["conversation_manage", "contact_manage", "report_manage"]
+    },
+    {
+      "nome": "Auxiliar Contábil",
+      "descricao": "Acesso apenas às próprias conversas",
+      "permissoes": ["conversation_participating_manage"]
+    }
+  ],
+  
+  "custom_attributes_contato": [
+    {
+      "nome": "Tipo de Cliente",
+      "chave": "tipo_cliente",
+      "tipo": "list",
+      "valores": ["MEI", "ME", "EPP", "Ltda", "Pessoa Física", "S/A"]
+    },
+    {
+      "nome": "Regime Tributário",
+      "chave": "regime_tributario",
+      "tipo": "list",
+      "valores": ["Simples Nacional", "Lucro Presumido", "Lucro Real", "MEI"]
+    },
+    {
+      "nome": "Setor de Atuação",
+      "chave": "setor_atuacao",
+      "tipo": "list",
+      "valores": ["Comércio", "Serviços", "Indústria", "Tecnologia", "Saúde", "Transporte"]
+    },
+    {
+      "nome": "CNPJ",
+      "chave": "cnpj",
+      "tipo": "text"
+    },
+    {
+      "nome": "Data de Início do Contrato",
+      "chave": "data_contrato",
+      "tipo": "date"
+    },
+    {
+      "nome": "Valor Mensal",
+      "chave": "valor_mensal",
+      "tipo": "number"
+    },
+    {
+      "nome": "Cliente VIP",
+      "chave": "cliente_vip",
+      "tipo": "checkbox"
+    }
+  ],
+  
+  "custom_attributes_conversa": [
+    {
+      "nome": "Tipo de Solicitação",
+      "chave": "tipo_solicitacao",
+      "tipo": "list",
+      "valores": ["Declaração", "Certidão", "Folha de Pagamento", "Abertura Empresa", "Consultoria", "Outros"]
+    },
+    {
+      "nome": "Prazo Legal",
+      "chave": "prazo_legal",
+      "tipo": "date"
+    },
+    {
+      "nome": "Número de Protocolo",
+      "chave": "numero_protocolo",
+      "tipo": "text"
+    },
+    {
+      "nome": "Valor do Serviço",
+      "chave": "valor_servico",
+      "tipo": "number"
+    }
+  ],
+  
+  "times": [
+    {
+      "nome": "Atendimento",
+      "descricao": "Time de atendimento inicial e triagem",
+      "tipo": "atendimento",
+      "auto_assign": true
+    },
+    {
+      "nome": "Departamento Fiscal",
+      "descricao": "Time especializado em obrigações fiscais e tributárias",
+      "tipo": "fiscal",
+      "auto_assign": true
+    },
+    {
+      "nome": "Departamento Pessoal",
+      "descricao": "Time de folha de pagamento e RH",
+      "tipo": "dp",
+      "auto_assign": true
+    },
+    {
+      "nome": "Societário",
+      "descricao": "Time de abertura, alteração e baixa de empresas",
+      "tipo": "societario",
+      "auto_assign": false
+    }
+  ],
+  
+  "agentes": [
+    {
+      "role": "administrator",
+      "time_tipo": "fiscal",
+      "especialidade": "Contador Responsável"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "atendimento",
+      "especialidade": "Supervisor de Atendimento",
+      "custom_role": "Contador Sênior"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "atendimento",
+      "especialidade": "Atendente",
+      "custom_role": "Auxiliar Contábil"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "fiscal",
+      "especialidade": "Analista Fiscal"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "fiscal",
+      "especialidade": "Analista Tributário"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "dp",
+      "especialidade": "Analista de DP"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "dp",
+      "especialidade": "Auxiliar de DP",
+      "custom_role": "Auxiliar Contábil"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "societario",
+      "especialidade": "Analista Societário"
+    }
+  ],
+  
+  "etiquetas": [
+    {"titulo": "declaracao-ir", "cor": "#FF6B6B"},
+    {"titulo": "mei", "cor": "#4ECDC4"},
+    {"titulo": "abertura-empresa", "cor": "#45B7D1"},
+    {"titulo": "folha-pagamento", "cor": "#FFA07A"},
+    {"titulo": "certidoes", "cor": "#98D8C8"},
+    {"titulo": "urgente", "cor": "#FF0000"},
+    {"titulo": "consultoria", "cor": "#BB8FCE"},
+    {"titulo": "fiscal", "cor": "#F7DC6F"},
+    {"titulo": "trabalhista", "cor": "#85C1E2"},
+    {"titulo": "societario", "cor": "#52D3AA"},
+    {"titulo": "simples-nacional", "cor": "#F8B739"},
+    {"titulo": "lucro-presumido", "cor": "#7DCEA0"},
+    {"titulo": "parcelamento", "cor": "#E74C3C"},
+    {"titulo": "nota-fiscal", "cor": "#3498DB"},
+    {"titulo": "ferias", "cor": "#1ABC9C"},
+    {"titulo": "rescisao", "cor": "#E67E22"},
+    {"titulo": "cliente-vip", "cor": "#9B59B6"}
+  ],
+  
+  "respostas_prontas": [
+    {
+      "codigo": "ola",
+      "texto": "Olá! 👋 Seja bem-vindo ao nosso escritório! Meu nome é {{agent.first_name}} e estou aqui para ajudar. Como posso auxiliá-lo hoje?"
+    },
+    {
+      "codigo": "ir",
+      "texto": "Para a declaração de Imposto de Renda, precisamos dos seguintes documentos:\n📄 Informe de rendimentos\n📄 CPF dos dependentes\n📄 Comprovantes médicos e educação\n📄 Informe de investimentos\n\nPosso agendar seu atendimento?"
+    },
+    {
+      "codigo": "mei",
+      "texto": "Para abrir seu MEI, você precisa de:\n📋 RG e CPF\n📋 Comprovante de residência\n📋 Título de eleitor\n\nO processo é gratuito e leva cerca de 15 minutos. Quer que eu faça para você?"
+    },
+    {
+      "codigo": "certidao",
+      "texto": "Posso emitir as seguintes certidões:\n✅ CND Federal (Receita + PGFN)\n✅ CND Estadual\n✅ CND Municipal\n✅ CND Trabalhista\n✅ FGTS Regular\n\nQual certidão você precisa?"
+    },
+    {
+      "codigo": "folha",
+      "texto": "Para processamento da folha de pagamento, preciso das seguintes informações até o dia 20:\n📊 Horas extras\n📊 Faltas e atrasos\n📊 Admissões e demissões\n📊 Férias programadas\n\nPode me enviar?"
+    },
+    {
+      "codigo": "abertura",
+      "texto": "Para abertura de empresa, o processo inclui:\n1️⃣ Consulta de viabilidade (2 dias)\n2️⃣ Registro na Junta Comercial (5 dias)\n3️⃣ CNPJ e Inscrições (3 dias)\n4️⃣ Licenças (variável)\n\nQual tipo de empresa você pretende abrir?"
+    },
+    {
+      "codigo": "prazo",
+      "texto": "⚠️ ATENÇÃO: Há um prazo legal para essa obrigação!\n\nVou verificar a data e te retorno em instantes."
+    },
+    {
+      "codigo": "despedida",
+      "texto": "Foi um prazer atendê-lo! 😊 Qualquer dúvida, estamos à disposição. Bom dia/Boa tarde!"
+    }
+  ],
+  
+  "automacoes": [
+    {
+      "nome": "IR para Fiscal",
+      "descricao": "Direciona assuntos de IR para o time fiscal",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["imposto de renda", "irpf", "irpj", "declaração"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "fiscal"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["declaracao-ir"]
+        }
+      ]
+    },
+    {
+      "nome": "Folha para DP",
+      "descricao": "Direciona assuntos de folha de pagamento para DP",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["folha", "salário", "férias", "rescisão", "funcionário"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "dp"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["trabalhista"]
+        }
+      ]
+    },
+    {
+      "nome": "Abertura para Societário",
+      "descricao": "Direciona abertura de empresa para time societário",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["abrir empresa", "cnpj", "mei", "contrato social"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "societario"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["abertura-empresa"]
+        }
+      ]
+    },
+    {
+      "nome": "Aplicar SLA Urgente",
+      "descricao": "Aplica SLA urgente para mensagens com palavras urgentes",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["urgente", "urgência", "prazo hoje", "multa"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "change_priority",
+          "action_params": ["urgent"]
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["urgente"]
+        },
+        {
+          "action_name": "add_sla",
+          "sla_nome": "SLA Urgente"
+        }
+      ]
+    }
+  ],
+  
+  "notas_contato_exemplos": [
+    "Cliente desde 2019. Sempre paga em dia. Prefere contato por WhatsApp.",
+    "Empresa familiar, 3ª geração. Contador anterior: João Silva. Migrou do Simples para Lucro Presumido em 2023.",
+    "Atenção: cliente teve problemas com a Receita em 2022 (parcelamento quitado). Monitorar obrigações.",
+    "VIP - Indicou 5 novos clientes. Dar prioridade no atendimento.",
+    "MEI - faturamento próximo do limite. Avaliar desenquadramento no próximo trimestre.",
+    "Empresa em processo de expansão. Pode precisar de consultoria tributária em breve.",
+    "Cliente exigente. Precisa de respostas rápidas. Melhor entrar em contato pela manhã.",
+    "Histórico: 2 atrasos no FGTS em 2023. Reforçar lembretes de vencimento."
+  ],
+  
+  "exemplo_mensagens": {
+    "cliente": [
+      "Olá, preciso declarar meu Imposto de Renda. Vocês podem me ajudar?",
+      "Bom dia! Quero abrir um MEI, quais documentos preciso?",
+      "Preciso de uma certidão negativa urgente para uma licitação",
+      "Minha empresa está irregular na Receita, como resolvo isso?",
+      "Gostaria de saber os valores para fazer a folha de pagamento",
+      "Preciso mudar de MEI para ME, qual o procedimento?",
+      "Vocês fazem consultoria para planejamento tributário?",
+      "Meu CNPJ foi suspenso, o que faço?",
+      "Quero encerrar minha empresa, como funciona?",
+      "Preciso de um balanço patrimonial urgente",
+      "Tenho uma notificação da Receita Federal, podem me ajudar?",
+      "Quanto custa para abrir uma empresa Ltda?",
+      "Vocês entregam DCTF e EFD-Contribuições?",
+      "Preciso alterar o contrato social, quais documentos necessários?",
+      "Meu certificado digital vai vencer, como renovo?",
+      "Gostaria de migrar para o Simples Nacional",
+      "Preciso de orientação sobre emissão de nota fiscal",
+      "Quanto tempo demora para abrir um CNPJ?",
+      "Vocês fazem auditoria contábil?",
+      "Preciso recuperar minhas obrigações acessórias atrasadas",
+      "Tenho um parcelamento da Receita em atraso",
+      "Preciso calcular férias de um funcionário",
+      "Quando é o prazo da DIRF?",
+      "Meu funcionário vai sair, como calculo a rescisão?",
+      "Vocês fazem emissão de nota fiscal de serviço?"
+    ],
+    "agente": [
+      "Olá! Sim, fazemos declaração de IR. Você é MEI ou assalariado?",
+      "Bom dia! Para abrir MEI você precisa de RG, CPF e comprovante de residência. Posso iniciar o processo?",
+      "Entendi a urgência. Em quanto tempo você precisa da certidão?",
+      "Vou verificar a situação do seu CNPJ. Qual o número da sua empresa?",
+      "Temos pacotes a partir de R$ 15,00 por funcionário. Quantos colaboradores você tem?",
+      "A migração de MEI para ME leva cerca de 15 dias. Vou te enviar a lista de documentos necessários.",
+      "Sim, fazemos consultoria tributária! Vou transferir para nosso especialista.",
+      "Vou precisar do número do seu CNPJ para analisar a situação.",
+      "O encerramento pode levar de 30 a 60 dias. Sua empresa está com as obrigações em dia?",
+      "Posso preparar o balanço. Você tem a contabilidade atualizada?",
+      "Vou precisar da notificação para analisar. Pode me enviar?",
+      "O custo varia conforme o porte e atividade. Qual será o ramo de atuação?",
+      "Sim, entregamos todas as obrigações acessórias. Posso agendar uma reunião?",
+      "Para alteração contratual preciso do contrato atual e documentos dos sócios.",
+      "A renovação deve ser feita com 30 dias de antecedência. Vou te passar o processo.",
+      "Posso verificar se sua empresa se enquadra no Simples. Qual o faturamento anual?",
+      "Vou te orientar sobre NFe. Sua empresa já tem certificado digital?",
+      "O prazo médio é de 5 a 7 dias úteis após protocolo na Junta Comercial.",
+      "Fazemos auditoria sim. Vou agendar uma conversa com nosso auditor.",
+      "Vou precisar de um período de apuração. A partir de quando está atrasado?",
+      "Posso verificar seu parcelamento. Qual o número do CNPJ?",
+      "Vou calcular as férias. Qual o período aquisitivo?",
+      "O prazo da DIRF é até o último dia útil de fevereiro.",
+      "Vou preparar a rescisão. Qual data do desligamento?",
+      "Sim, emitimos NFS-e. Para qual município?"
+    ]
+  },
+  
+  "csat": {
+    "ativo": true,
+    "enviar_apos_resolucao": true
+  }
+}

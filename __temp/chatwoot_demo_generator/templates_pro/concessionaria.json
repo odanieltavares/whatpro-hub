@@ -1,0 +1,86 @@
+{
+  "nome": "Concessionária de Veículos PRO",
+  "descricao": "Template completo com TODAS as features do Chatwoot para lojas de veículos",
+  "num_contatos": 40,
+  "num_conversas": 55,
+  
+  "sla_policies": [
+    {"nome": "SLA Vendas", "descricao": "SLA para leads de vendas", "primeira_resposta_minutos": 5, "proxima_resposta_minutos": 15, "tempo_resolucao_minutos": 480},
+    {"nome": "SLA Pós-Venda", "descricao": "SLA para atendimentos de pós-venda", "primeira_resposta_minutos": 30, "proxima_resposta_minutos": 60, "tempo_resolucao_minutos": 1440},
+    {"nome": "SLA Hot Lead", "descricao": "SLA para leads quentes", "primeira_resposta_minutos": 2, "proxima_resposta_minutos": 10, "tempo_resolucao_minutos": 240}
+  ],
+  
+  "custom_roles": [
+    {"nome": "Gerente de Vendas", "descricao": "Acesso total e relatórios", "permissoes": ["conversation_manage", "contact_manage", "report_manage"]},
+    {"nome": "Consultor de Vendas", "descricao": "Acesso às próprias conversas", "permissoes": ["conversation_unassigned_manage", "contact_manage"]}
+  ],
+  
+  "custom_attributes_contato": [
+    {"nome": "Interesse Principal", "chave": "interesse_principal", "tipo": "list", "valores": ["Compra à vista", "Financiamento", "Consórcio", "Troca"]},
+    {"nome": "Tipo de Veículo", "chave": "tipo_veiculo", "tipo": "list", "valores": ["SUV", "Sedan", "Hatch", "Pickup", "Esportivo"]},
+    {"nome": "Faixa de Preço", "chave": "faixa_preco", "tipo": "list", "valores": ["Até 50k", "50k-100k", "100k-150k", "Acima 150k"]},
+    {"nome": "Origem do Lead", "chave": "origem_lead", "tipo": "list", "valores": ["Site", "Instagram", "Facebook", "Google Ads", "Indicação"]},
+    {"nome": "Veículo de Troca", "chave": "veiculo_troca", "tipo": "text"},
+    {"nome": "Valor de Entrada", "chave": "valor_entrada", "tipo": "number"},
+    {"nome": "Cliente VIP", "chave": "cliente_vip", "tipo": "checkbox"}
+  ],
+  
+  "custom_attributes_conversa": [
+    {"nome": "Modelo de Interesse", "chave": "modelo_interesse", "tipo": "text"},
+    {"nome": "Status da Negociação", "chave": "status_negociacao", "tipo": "list", "valores": ["Primeiro contato", "Test-drive", "Proposta enviada", "Fechado", "Perdido"]},
+    {"nome": "Valor da Proposta", "chave": "valor_proposta", "tipo": "number"},
+    {"nome": "Data do Test-Drive", "chave": "data_test_drive", "tipo": "date"}
+  ],
+  
+  "times": [
+    {"nome": "Atendimento", "descricao": "Triagem inicial", "tipo": "atendimento", "auto_assign": true},
+    {"nome": "Vendas Novos", "descricao": "Veículos 0km", "tipo": "vendas-novos", "auto_assign": true},
+    {"nome": "Vendas Seminovos", "descricao": "Veículos usados", "tipo": "vendas-seminovos", "auto_assign": true},
+    {"nome": "F&I", "descricao": "Financiamento", "tipo": "financiamento", "auto_assign": false},
+    {"nome": "Pós-Venda", "descricao": "Oficina e peças", "tipo": "pos-venda", "auto_assign": false}
+  ],
+  
+  "agentes": [
+    {"role": "administrator", "time_tipo": "vendas-novos", "especialidade": "Gerente de Vendas"},
+    {"role": "agent", "time_tipo": "atendimento", "especialidade": "Atendente"},
+    {"role": "agent", "time_tipo": "vendas-novos", "especialidade": "Consultor 0km", "custom_role": "Consultor de Vendas"},
+    {"role": "agent", "time_tipo": "vendas-novos", "especialidade": "Consultor 0km"},
+    {"role": "agent", "time_tipo": "vendas-seminovos", "especialidade": "Consultor Seminovos"},
+    {"role": "agent", "time_tipo": "vendas-seminovos", "especialidade": "Avaliador"},
+    {"role": "agent", "time_tipo": "financiamento", "especialidade": "Analista F&I"},
+    {"role": "agent", "time_tipo": "pos-venda", "especialidade": "Consultor Pós-Venda"}
+  ],
+  
+  "etiquetas": [
+    {"titulo": "interesse-compra", "cor": "#27AE60"}, {"titulo": "test-drive", "cor": "#3498DB"},
+    {"titulo": "financiamento", "cor": "#9B59B6"}, {"titulo": "avaliacao", "cor": "#F39C12"},
+    {"titulo": "troca", "cor": "#1ABC9C"}, {"titulo": "seminovo", "cor": "#E67E22"},
+    {"titulo": "0km", "cor": "#2ECC71"}, {"titulo": "revisao", "cor": "#95A5A6"},
+    {"titulo": "hot-lead", "cor": "#FF0000"}, {"titulo": "cliente-vip", "cor": "#F1C40F"}
+  ],
+  
+  "respostas_prontas": [
+    {"codigo": "ola", "texto": "Olá! 👋 Seja bem-vindo à nossa concessionária! Meu nome é {{agent.first_name}}. Como posso ajudar?"},
+    {"codigo": "testdrive", "texto": "🚗 Vamos agendar seu test-drive! Preciso de:\n📋 Nome completo\n📋 CNH válida\n📋 Modelo de interesse\n📋 Melhor horário"},
+    {"codigo": "financiamento", "texto": "💳 Taxas a partir de 0,99% a.m., até 60x, entrada mínima 20%. Qual valor de entrada?"},
+    {"codigo": "avaliacao", "texto": "🔍 Para avaliar seu veículo, preciso de fotos, ano, modelo, km e opcionais."}
+  ],
+  
+  "automacoes": [
+    {"nome": "0km → Vendas Novos", "descricao": "Direciona interesse em 0km", "evento": "message_created", "conditions": [{"attribute_key": "content", "filter_operator": "contains", "values": ["0km", "zero km", "novo"]}], "actions": [{"action_name": "assign_team", "time_tipo": "vendas-novos"}, {"action_name": "add_label", "action_params": ["0km"]}, {"action_name": "add_sla", "sla_nome": "SLA Vendas"}]},
+    {"nome": "Hot Lead", "descricao": "Prioriza leads quentes", "evento": "message_created", "conditions": [{"attribute_key": "content", "filter_operator": "contains", "values": ["quero comprar", "vou fechar"]}], "actions": [{"action_name": "change_priority", "action_params": ["urgent"]}, {"action_name": "add_label", "action_params": ["hot-lead"]}, {"action_name": "add_sla", "sla_nome": "SLA Hot Lead"}]}
+  ],
+  
+  "notas_contato_exemplos": [
+    "Cliente VIP - já comprou 3 veículos conosco. Dono de frota.",
+    "Lead do Google Ads. Interesse em Corolla. Fez test-drive. Aguardando crédito.",
+    "Empresário, busca carro para esposa. Orçamento até 150k. Prefere SUV."
+  ],
+  
+  "exemplo_mensagens": {
+    "cliente": ["Olá! Gostaria de saber o preço do Civic 2024", "Vocês têm Corolla Cross disponível?", "Quero agendar um test-drive", "Quanto dá meu carro na troca?", "Vocês trabalham com financiamento?"],
+    "agente": ["Olá! O Civic 2024 está a partir de R$ 169.900. Qual versão te interessa?", "Sim, temos em estoque. Prefere XRE ou XRV?", "Perfeito! Qual dia e horário?", "Pode me passar ano, modelo e km?", "Taxas a partir de 0,99%. Qual seria a entrada?"]
+  },
+  
+  "csat": {"ativo": true, "enviar_apos_resolucao": true}
+}

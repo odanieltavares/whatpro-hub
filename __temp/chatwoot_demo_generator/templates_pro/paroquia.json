@@ -1,0 +1,400 @@
+{
+  "nome": "Paróquia / Igreja PRO",
+  "descricao": "Template completo com TODAS as features do Chatwoot para paróquias e comunidades religiosas",
+  "num_contatos": 35,
+  "num_conversas": 50,
+  
+  "sla_policies": [
+    {
+      "nome": "SLA Pastoral",
+      "descricao": "SLA padrão para atendimentos pastorais",
+      "primeira_resposta_minutos": 60,
+      "proxima_resposta_minutos": 120,
+      "tempo_resolucao_minutos": 2880
+    },
+    {
+      "nome": "SLA Sacramentos",
+      "descricao": "SLA para solicitações de sacramentos",
+      "primeira_resposta_minutos": 30,
+      "proxima_resposta_minutos": 60,
+      "tempo_resolucao_minutos": 1440
+    }
+  ],
+  
+  "custom_roles": [
+    {
+      "nome": "Coordenador de Pastoral",
+      "descricao": "Acesso às conversas da pastoral e relatórios",
+      "permissoes": ["conversation_unassigned_manage", "contact_manage", "report_manage"]
+    },
+    {
+      "nome": "Secretária Paroquial",
+      "descricao": "Acesso total às conversas e agendamentos",
+      "permissoes": ["conversation_manage", "contact_manage"]
+    }
+  ],
+  
+  "custom_attributes_contato": [
+    {
+      "nome": "Vínculo com a Paróquia",
+      "chave": "vinculo_paroquia",
+      "tipo": "list",
+      "valores": ["Paroquiano ativo", "Paroquiano eventual", "Visitante", "Novo na comunidade", "Ex-paroquiano"]
+    },
+    {
+      "nome": "Sacramentos Recebidos",
+      "chave": "sacramentos",
+      "tipo": "list",
+      "valores": ["Batismo", "1ª Eucaristia", "Crisma", "Matrimônio", "Nenhum"]
+    },
+    {
+      "nome": "Pastoral que Participa",
+      "chave": "pastoral",
+      "tipo": "list",
+      "valores": ["Jovens", "Família", "Criança", "Idosos", "Musical", "Social", "Catequese", "Liturgia", "Nenhuma"]
+    },
+    {
+      "nome": "Data de Cadastro",
+      "chave": "data_cadastro",
+      "tipo": "date"
+    },
+    {
+      "nome": "Contribui com Dízimo",
+      "chave": "dizimista",
+      "tipo": "checkbox"
+    },
+    {
+      "nome": "Número de Família",
+      "chave": "numero_familia",
+      "tipo": "text"
+    }
+  ],
+  
+  "custom_attributes_conversa": [
+    {
+      "nome": "Tipo de Solicitação",
+      "chave": "tipo_solicitacao",
+      "tipo": "list",
+      "valores": ["Sacramento", "Informação", "Pastoral", "Doação", "Evento", "Catequese", "Certidão"]
+    },
+    {
+      "nome": "Sacramento Solicitado",
+      "chave": "sacramento_solicitado",
+      "tipo": "list",
+      "valores": ["Batismo", "Casamento", "Primeira Comunhão", "Crisma", "Confissão", "Unção", "Nenhum"]
+    },
+    {
+      "nome": "Data Agendada",
+      "chave": "data_agendada",
+      "tipo": "date"
+    },
+    {
+      "nome": "Valor de Oferta",
+      "chave": "valor_oferta",
+      "tipo": "number"
+    }
+  ],
+  
+  "times": [
+    {
+      "nome": "Secretaria Paroquial",
+      "descricao": "Atendimento geral e informações",
+      "tipo": "secretaria",
+      "auto_assign": true
+    },
+    {
+      "nome": "Sacramentos",
+      "descricao": "Time responsável por batismo, casamento, crisma, etc",
+      "tipo": "sacramentos",
+      "auto_assign": true
+    },
+    {
+      "nome": "Catequese",
+      "descricao": "Time de catequese e formação",
+      "tipo": "catequese",
+      "auto_assign": true
+    },
+    {
+      "nome": "Pastorais",
+      "descricao": "Coordenação das pastorais",
+      "tipo": "pastorais",
+      "auto_assign": false
+    },
+    {
+      "nome": "Dízimo e Doações",
+      "descricao": "Contribuições e finanças",
+      "tipo": "financeiro",
+      "auto_assign": false
+    }
+  ],
+  
+  "agentes": [
+    {
+      "role": "administrator",
+      "time_tipo": "secretaria",
+      "especialidade": "Padre/Coordenador"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "secretaria",
+      "especialidade": "Secretária Paroquial",
+      "custom_role": "Secretária Paroquial"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "secretaria",
+      "especialidade": "Auxiliar de Secretaria"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "sacramentos",
+      "especialidade": "Coordenador de Batismo"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "sacramentos",
+      "especialidade": "Coordenador de Casamento"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "catequese",
+      "especialidade": "Catequista Coordenador",
+      "custom_role": "Coordenador de Pastoral"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "pastorais",
+      "especialidade": "Coordenador de Pastorais",
+      "custom_role": "Coordenador de Pastoral"
+    },
+    {
+      "role": "agent",
+      "time_tipo": "financeiro",
+      "especialidade": "Tesoureiro"
+    }
+  ],
+  
+  "etiquetas": [
+    {"titulo": "sacramento", "cor": "#9B59B6"},
+    {"titulo": "batismo", "cor": "#3498DB"},
+    {"titulo": "casamento", "cor": "#E91E63"},
+    {"titulo": "primeira-comunhao", "cor": "#F1C40F"},
+    {"titulo": "crisma", "cor": "#E74C3C"},
+    {"titulo": "missas", "cor": "#2ECC71"},
+    {"titulo": "dizimo", "cor": "#27AE60"},
+    {"titulo": "pastoral", "cor": "#1ABC9C"},
+    {"titulo": "catequese", "cor": "#F39C12"},
+    {"titulo": "intencao-missa", "cor": "#8E44AD"},
+    {"titulo": "eventos", "cor": "#3498DB"},
+    {"titulo": "voluntariado", "cor": "#16A085"},
+    {"titulo": "certidao", "cor": "#95A5A6"},
+    {"titulo": "confissao", "cor": "#7F8C8D"},
+    {"titulo": "paroquiano", "cor": "#2980B9"},
+    {"titulo": "novo-membro", "cor": "#27AE60"},
+    {"titulo": "urgente", "cor": "#C0392B"}
+  ],
+  
+  "respostas_prontas": [
+    {
+      "codigo": "paz",
+      "texto": "A paz de Cristo! 🙏 Seja bem-vindo à nossa paróquia! Meu nome é {{agent.first_name}}. Como posso ajudá-lo hoje?"
+    },
+    {
+      "codigo": "missas",
+      "texto": "📅 Horários das Missas:\n\n🌅 Domingo: 7h, 9h, 11h e 19h\n🌙 Sábado: 18h (Vésperas)\n📆 Segunda a Sexta: 7h e 19h\n\nQual horário é melhor para você?"
+    },
+    {
+      "codigo": "batismo",
+      "texto": "Para realizar o Batismo, são necessários:\n✝️ Certidão de nascimento do batizando\n✝️ RG/CPF dos pais\n✝️ RG/CPF dos padrinhos (casados pela Igreja)\n✝️ Participação no curso de batismo (sábado 14h)\n\nPosso agendar sua inscrição?"
+    },
+    {
+      "codigo": "casamento",
+      "texto": "Para o casamento religioso, os documentos são:\n💒 RG e CPF dos noivos\n💒 Certidão de batismo atualizada\n💒 Certidão de crisma\n💒 Comprovante de residência\n💒 Curso de noivos (obrigatório)\n\nGostaria de agendar uma data?"
+    },
+    {
+      "codigo": "catequese",
+      "texto": "As inscrições para catequese:\n📚 1ª Eucaristia: crianças a partir de 7 anos\n📚 Crisma: jovens a partir de 13 anos\n📚 Catecumenato (adultos): qualquer idade\n\nMatrículas em fevereiro! Qual sacramento interessa?"
+    },
+    {
+      "codigo": "dizimo",
+      "texto": "O dízimo pode ser contribuído de várias formas:\n💳 PIX: paroquia@email.com\n🏦 Banco X - Ag: 1234 - Conta: 56789-0\n💵 Envelope na missa\n📱 Carnê mensal na secretaria\n\nQual forma você prefere?"
+    },
+    {
+      "codigo": "intencao",
+      "texto": "Para solicitar intenção de missa:\n🙏 Valor sugerido: R$ 30,00\n📅 Escolha o dia e horário\n📝 Informe o nome da pessoa/família\n\nPara quando você gostaria?"
+    },
+    {
+      "codigo": "bencao",
+      "texto": "Que Deus os abençoe! 🙏✨ Qualquer dúvida, estamos sempre à disposição. A paz de Cristo!"
+    }
+  ],
+  
+  "automacoes": [
+    {
+      "nome": "Batismo → Sacramentos",
+      "descricao": "Direciona pedidos de batismo para o time de sacramentos",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["batismo", "batizar", "padrinho", "madrinha"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "sacramentos"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["batismo"]
+        },
+        {
+          "action_name": "add_sla",
+          "sla_nome": "SLA Sacramentos"
+        }
+      ]
+    },
+    {
+      "nome": "Casamento → Sacramentos",
+      "descricao": "Direciona pedidos de casamento para o time de sacramentos",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["casamento", "casar", "noivos", "matrimônio"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "sacramentos"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["casamento"]
+        }
+      ]
+    },
+    {
+      "nome": "Catequese → Time Catequese",
+      "descricao": "Direciona assuntos de catequese",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["catequese", "primeira comunhão", "crisma", "eucaristia"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "catequese"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["catequese"]
+        }
+      ]
+    },
+    {
+      "nome": "Dízimo → Financeiro",
+      "descricao": "Direciona assuntos de dízimo e doações",
+      "evento": "message_created",
+      "conditions": [
+        {
+          "attribute_key": "content",
+          "filter_operator": "contains",
+          "values": ["dízimo", "doação", "contribuição", "oferenda"]
+        }
+      ],
+      "actions": [
+        {
+          "action_name": "assign_team",
+          "time_tipo": "financeiro"
+        },
+        {
+          "action_name": "add_label",
+          "action_params": ["dizimo"]
+        }
+      ]
+    }
+  ],
+  
+  "notas_contato_exemplos": [
+    "Família tradicional da paróquia. Participam há 3 gerações. Avós eram catequistas.",
+    "Casal jovem, batizaram o primeiro filho em 2023. Interessados em participar da pastoral familiar.",
+    "Dizimista fiel desde 2015. Contribui mensalmente via PIX.",
+    "Jovem do grupo de jovens. Fez crisma em 2022. Coordenador do grupo de música.",
+    "Novo na comunidade. Veio de outra paróquia (São José). Busca grupos de oração.",
+    "Viúva, participa da Pastoral dos Idosos. Sempre presente nas missas das 7h.",
+    "Casal em preparação para casamento. Curso de noivos programado para março/2024.",
+    "Catequista voluntária há 10 anos. Responsável pela turma de 1ª Eucaristia.",
+    "Família estrangeira (venezuelanos). Preferem atendimento em espanhol quando possível."
+  ],
+  
+  "exemplo_mensagens": {
+    "cliente": [
+      "Bom dia! Quais os horários das missas de domingo?",
+      "Gostaria de batizar meu filho, como faço?",
+      "Preciso de uma certidão de batismo, como solicito?",
+      "Quando começa a catequese para primeira comunhão?",
+      "Quero fazer uma intenção de missa para minha avó",
+      "Vocês têm grupo de jovens? Como posso participar?",
+      "Quero me casar na igreja, quais os documentos necessários?",
+      "Onde fica a secretaria paroquial? Qual o horário?",
+      "Como faço para ser padrinho de batismo?",
+      "Gostaria de contribuir com o dízimo, como funciona?",
+      "Tem adoração ao Santíssimo durante a semana?",
+      "Quero participar do coral da igreja, tem vaga?",
+      "Preciso confessar, qual o horário do padre?",
+      "Vocês fazem casamento comunitário?",
+      "Como faço para ser voluntário nas pastorais?",
+      "Meu filho vai fazer a crisma, quando são as aulas?",
+      "Tem missa durante a semana? Quais dias?",
+      "Gostaria de fazer uma doação para a festa da padroeira",
+      "Vocês têm catequese para adultos?",
+      "Preciso de atestado de frequência para crisma",
+      "Como faço para alugar o salão paroquial?",
+      "Tem retiro espiritual programado?",
+      "Gostaria de batizar dois filhos juntos, pode?",
+      "Quanto custa para fazer uma missa de 7º dia?",
+      "Vocês têm grupo de oração?"
+    ],
+    "agente": [
+      "A paz de Cristo! Temos missas às 7h, 9h, 11h e 19h aos domingos. Qual horário prefere?",
+      "Que benção! Precisa participar do curso de batismo aos sábados às 14h. Posso te inscrever?",
+      "Pode solicitar na secretaria com RG. Atendemos de segunda a sexta das 13h às 17h.",
+      "A catequese inicia em março! Crianças a partir de 7 anos. Quer mais informações?",
+      "Pode ser feita aqui! Qual o nome da pessoa e qual dia você prefere?",
+      "Sim! O grupo se reúne aos domingos às 16h. Você tem qual idade?",
+      "Precisa do curso de noivos e documentação. Pode vir na terça às 19h?",
+      "Fica ao lado da igreja. Atendemos de segunda a sexta das 13h às 17h.",
+      "Precisa ser batizado e crismado na Igreja. Você já fez os sacramentos?",
+      "O dízimo pode ser por PIX, depósito ou envelope. Quer os dados?",
+      "Sim! Toda quinta-feira das 19h às 20h. Seja bem-vindo!",
+      "Temos ensaios às quartas às 20h. Você tem experiência com canto?",
+      "Confissões são aos sábados das 16h às 18h e antes das missas.",
+      "Fazemos sim! Geralmente em junho e dezembro. Quer se inscrever?",
+      "Maravilha! Temos várias pastorais. Qual área você se identifica mais?",
+      "As aulas de crisma são aos sábados às 15h. Ele tem quantos anos?",
+      "Sim! Temos missa de terça a sexta às 19h. Aos sábados às 18h.",
+      "Que Deus abençoe! Pode fazer PIX ou trazer pessoalmente. O que prefere?",
+      "Temos catecumenato para adultos! Às quartas às 20h. Interesse em qual sacramento?",
+      "Pode solicitar com a catequista dele. Qual o nome dele?",
+      "O salão pode ser alugado! Precisa ver disponibilidade. Para qual data?",
+      "Temos retiro em abril! Quer que eu te coloque na lista?",
+      "Pode sim! Vou agendar o mesmo dia para os dois. Quais os nomes?",
+      "A oferta sugerida é R$ 30, mas aceita o que a família puder. Qual dia?",
+      "Sim! Toda terça às 20h no salão. Venha nos visitar!"
+    ]
+  },
+  
+  "csat": {
+    "ativo": true,
+    "enviar_apos_resolucao": true
+  }
+}

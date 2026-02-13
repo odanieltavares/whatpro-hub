@@ -1,0 +1,417 @@
+# 🔌 Integração com Chatwoot - Documentação Técnica
+
+## 📡 Como Funciona a Integração
+
+### **API REST do Chatwoot**
+
+O Chatwoot possui uma API REST completa e bem documentada que permite gerenciar todos os recursos da plataforma.
+
+**Documentação oficial:**
+- https://www.chatwoot.com/developers/api/
+- Swagger/OpenAPI disponível em: `https://sua-instancia.chatwoot.com/api-docs`
+
+---
+
+## 🔑 Autenticação
+
+### **1. Obter API Key**
+
+```
+Settings → Profile → Access Token
+```
+
+A API Key dá acesso completo à conta. **Mantenha segura!**
+
+### **2. Usar nos Requests**
+
+```python
+import requests
+
+headers = {
+    'api_access_token': 'SUA_API_KEY_AQUI',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get(
+    'https://app.chatwoot.com/api/v1/accounts/1/conversations',
+    headers=headers
+)
+```
+
+---
+
+## 🏗️ Estrutura da API
+
+### **URL Base**
+```
+https://{sua-instancia}.chatwoot.com/api/v1/accounts/{account_id}
+```
+
+### **Principais Endpoints**
+
+| Recurso | Endpoint | Métodos |
+|---------|----------|---------|
+| **Conversas** | `/conversations` | GET, POST, PUT, DELETE |
+| **Mensagens** | `/conversations/{id}/messages` | GET, POST |
+| **Contatos** | `/contacts` | GET, POST, PUT, DELETE |
+| **Agentes** | `/agents` | GET, POST, PUT, DELETE |
+| **Times** | `/teams` | GET, POST, PUT, DELETE |
+| **Inboxes** | `/inboxes` | GET, POST, PUT, DELETE |
+| **Labels** | `/labels` | GET, POST, PUT, DELETE |
+| **Canned Responses** | `/canned_responses` | GET, POST, PUT, DELETE |
+| **Webhooks** | `/webhooks` | GET, POST, PUT, DELETE |
+| **Automation Rules** | `/automation_rules` | GET, POST, PUT, DELETE |
+| **Reports** | `/reports` | GET |
+
+---
+
+## 📊 Recursos Disponíveis na API
+
+### ✅ **Implementados no Script Básico**
+- Conversas
+- Contatos
+- Mensagens
+- Inboxes
+- Labels básicas
+- Custom Attributes
+
+### ⚡ **Implementados no Script PRO**
+- **Times/Equipes** - Organização por departamentos
+- **Agentes** - Com roles (Admin, Agent, Supervisor)
+- **Prioridades** - Low, Medium, High, Urgent
+- **Notas Privadas** - Comentários internos da equipe
+- **SLA** - Service Level Agreement tracking
+- **Canned Responses** - Respostas prontas/templates
+- **Automações** - Regras de workflow automático
+- **CSAT** - Customer Satisfaction surveys
+- **Atribuições** - Auto-assign de conversas
+- **Status** - Open, Pending, Resolved, Snoozed
+- **Macros** - Ações em lote
+
+---
+
+## 🔧 Exemplos de Uso da API
+
+### **1. Criar Contato**
+```python
+import requests
+
+url = "https://app.chatwoot.com/api/v1/accounts/1/contacts"
+headers = {
+    "api_access_token": "sua_key",
+    "Content-Type": "application/json"
+}
+data = {
+    "name": "João Silva",
+    "email": "joao@exemplo.com",
+    "phone_number": "+5511999999999",
+    "custom_attributes": {
+        "cidade": "São Paulo",
+        "interesse": "Produto X"
+    }
+}
+
+response = requests.post(url, headers=headers, json=data)
+contato = response.json()
+print(f"Contato criado: ID {contato['id']}")
+```
+
+### **2. Criar Conversa**
+```python
+url = "https://app.chatwoot.com/api/v1/accounts/1/conversations"
+data = {
+    "inbox_id": 1,
+    "contact_id": 123,
+    "status": "open",
+    "priority": "high"
+}
+
+response = requests.post(url, headers=headers, json=data)
+conversa = response.json()
+```
+
+### **3. Enviar Mensagem**
+```python
+conversation_id = 456
+url = f"https://app.chatwoot.com/api/v1/accounts/1/conversations/{conversation_id}/messages"
+
+data = {
+    "content": "Olá! Como posso ajudar?",
+    "message_type": "outgoing",  # ou "incoming"
+    "private": False  # True para notas privadas
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+### **4. Adicionar Label**
+```python
+conversation_id = 456
+url = f"https://app.chatwoot.com/api/v1/accounts/1/conversations/{conversation_id}/labels"
+
+data = {
+    "labels": ["urgente", "vip", "follow-up"]
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+### **5. Criar Time**
+```python
+url = "https://app.chatwoot.com/api/v1/accounts/1/teams"
+data = {
+    "name": "Vendas",
+    "description": "Equipe de vendas e relacionamento",
+    "allow_auto_assign": True
+}
+
+response = requests.post(url, headers=headers, json=data)
+time = response.json()
+```
+
+### **6. Adicionar Agente**
+```python
+url = "https://app.chatwoot.com/api/v1/accounts/1/agents"
+data = {
+    "name": "Maria Santos",
+    "email": "maria@empresa.com",
+    "role": "agent"  # admin, agent, ou supervisor
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+### **7. Criar Resposta Pronta**
+```python
+url = "https://app.chatwoot.com/api/v1/accounts/1/canned_responses"
+data = {
+    "short_code": "ola",
+    "content": "Olá! Seja bem-vindo ao nosso atendimento. Como posso ajudar?"
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+### **8. Criar Automação**
+```python
+url = "https://app.chatwoot.com/api/v1/accounts/1/automation_rules"
+data = {
+    "name": "Atribuir conversa nova",
+    "description": "Auto-assign novas conversas ao time de vendas",
+    "event_name": "conversation_created",
+    "conditions": [
+        {
+            "attribute_key": "status",
+            "filter_operator": "equal_to",
+            "values": ["open"]
+        }
+    ],
+    "actions": [
+        {
+            "action_name": "assign_team",
+            "action_params": [1]  # ID do time
+        }
+    ]
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+### **9. Enviar CSAT**
+```python
+conversation_id = 456
+url = f"https://app.chatwoot.com/api/v1/accounts/1/conversations/{conversation_id}/messages"
+
+data = {
+    "content": "Como você avalia nosso atendimento?",
+    "message_type": "outgoing",
+    "content_attributes": {
+        "submitted_values": [
+            {"name": "csat_survey_response", "value": ""}
+        ]
+    }
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+---
+
+## 🔒 Segurança e Rate Limits
+
+### **Rate Limiting**
+- **100 requisições por minuto** por API key
+- Status code `429` quando exceder
+- Header `X-RateLimit-Remaining` indica requisições restantes
+
+### **Boas Práticas**
+```python
+import time
+import requests
+
+def fazer_request_com_retry(url, headers, data, max_retries=3):
+    """Faz request com retry automático em caso de rate limit"""
+    for tentativa in range(max_retries):
+        response = requests.post(url, headers=headers, json=data)
+        
+        if response.status_code == 429:
+            # Rate limit atingido, aguardar
+            time.sleep(2 ** tentativa)  # Exponential backoff
+            continue
+        
+        return response
+    
+    raise Exception("Rate limit excedido após múltiplas tentativas")
+```
+
+---
+
+## 📝 Estrutura de Dados
+
+### **Conversa (Conversation)**
+```json
+{
+  "id": 123,
+  "inbox_id": 1,
+  "contact_id": 456,
+  "status": "open",
+  "priority": "medium",
+  "assignee_id": 789,
+  "team_id": 10,
+  "labels": ["vip", "urgente"],
+  "custom_attributes": {
+    "valor_pedido": "R$ 1.500,00",
+    "produto": "Plano Premium"
+  },
+  "sla_policy_id": 1,
+  "created_at": "2024-01-19T10:00:00Z",
+  "updated_at": "2024-01-19T15:30:00Z"
+}
+```
+
+### **Contato (Contact)**
+```json
+{
+  "id": 456,
+  "name": "João Silva",
+  "email": "joao@exemplo.com",
+  "phone_number": "+5511999999999",
+  "custom_attributes": {
+    "cidade": "São Paulo",
+    "interesse": "Produto X",
+    "score": "hot"
+  },
+  "created_at": "2024-01-15T08:00:00Z"
+}
+```
+
+### **Mensagem (Message)**
+```json
+{
+  "id": 789,
+  "content": "Olá! Como posso ajudar?",
+  "message_type": "outgoing",
+  "private": false,
+  "sender_id": 123,
+  "conversation_id": 456,
+  "attachments": [],
+  "created_at": "2024-01-19T10:05:00Z"
+}
+```
+
+---
+
+## 🎯 Limitações e Considerações
+
+### **O que a API PODE fazer:**
+✅ Criar/editar/deletar todos os recursos
+✅ Buscar e filtrar dados
+✅ Configurar automações
+✅ Gerenciar times e agentes
+✅ Enviar mensagens e arquivos
+✅ Aplicar labels e atributos
+✅ Gerar relatórios
+
+### **O que a API NÃO PODE fazer:**
+❌ Enviar mensagens via WhatsApp oficial (precisa de integração específica)
+❌ Acessar recursos de outras contas
+❌ Modificar configurações de billing
+❌ Criar super admins via API
+
+---
+
+## 🔄 Webhooks
+
+O Chatwoot pode enviar webhooks para seu servidor quando eventos ocorrem:
+
+```python
+# Criar webhook
+url = "https://app.chatwoot.com/api/v1/accounts/1/webhooks"
+data = {
+    "url": "https://seu-servidor.com/webhook",
+    "subscriptions": [
+        "conversation_created",
+        "message_created",
+        "conversation_resolved"
+    ]
+}
+
+response = requests.post(url, headers=headers, json=data)
+```
+
+**Eventos disponíveis:**
+- `conversation_created`
+- `conversation_updated`
+- `conversation_resolved`
+- `message_created`
+- `message_updated`
+- `contact_created`
+- `contact_updated`
+
+---
+
+## 📚 Recursos Adicionais
+
+- **Documentação oficial:** https://www.chatwoot.com/developers/api/
+- **Exemplos em várias linguagens:** https://github.com/chatwoot/chatwoot/tree/develop/docs/api
+- **Postman Collection:** Disponível na documentação oficial
+- **SDK não-oficial Python:** `pip install chatwoot-python` (comunidade)
+
+---
+
+## 💡 Dicas Pro
+
+### **Batch Processing**
+Para criar muitos dados, use threading:
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+def criar_contato(dados):
+    return requests.post(url, headers=headers, json=dados)
+
+contatos_para_criar = [...]
+
+with ThreadPoolExecutor(max_workers=5) as executor:
+    resultados = executor.map(criar_contato, contatos_para_criar)
+```
+
+### **Caching**
+Armazene IDs de recursos criados para reusar:
+
+```python
+cache = {
+    'agentes': {},
+    'times': {},
+    'inboxes': {}
+}
+
+# Criar apenas se não existir
+if 'vendas' not in cache['times']:
+    time = criar_time('Vendas')
+    cache['times']['vendas'] = time['id']
+```
+
+---
+
+**Desenvolvido para WhatPro Chat**

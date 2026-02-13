@@ -1,0 +1,86 @@
+{
+  "nome": "E-commerce PRO",
+  "descricao": "Template completo com TODAS as features do Chatwoot para e-commerce",
+  "num_contatos": 30,
+  "num_conversas": 45,
+  
+  "sla_policies": [
+    {"nome": "SLA Padrão", "descricao": "SLA para atendimentos normais", "primeira_resposta_minutos": 15, "proxima_resposta_minutos": 30, "tempo_resolucao_minutos": 1440},
+    {"nome": "SLA VIP", "descricao": "SLA para clientes VIP", "primeira_resposta_minutos": 5, "proxima_resposta_minutos": 15, "tempo_resolucao_minutos": 480}
+  ],
+  
+  "custom_roles": [
+    {"nome": "Supervisor de Atendimento", "descricao": "Acesso a relatórios e todas as conversas", "permissoes": ["conversation_manage", "contact_manage", "report_manage"]},
+    {"nome": "Atendente", "descricao": "Acesso às próprias conversas e não atribuídas", "permissoes": ["conversation_unassigned_manage", "contact_manage"]}
+  ],
+  
+  "custom_attributes_contato": [
+    {"nome": "Tipo de Cliente", "chave": "tipo_cliente", "tipo": "list", "valores": ["Novo", "Recorrente", "VIP", "Inativo"]},
+    {"nome": "Valor Ticket Médio", "chave": "ticket_medio", "tipo": "list", "valores": ["Baixo", "Médio", "Alto", "Premium"]},
+    {"nome": "Origem", "chave": "origem", "tipo": "list", "valores": ["Site", "Instagram", "Facebook", "Google Ads", "Indicação"]},
+    {"nome": "CPF", "chave": "cpf", "tipo": "text"},
+    {"nome": "Data da Última Compra", "chave": "ultima_compra", "tipo": "date"},
+    {"nome": "Total em Compras", "chave": "total_compras", "tipo": "number"},
+    {"nome": "Cliente VIP", "chave": "cliente_vip", "tipo": "checkbox"}
+  ],
+  
+  "custom_attributes_conversa": [
+    {"nome": "Número do Pedido", "chave": "numero_pedido", "tipo": "text"},
+    {"nome": "Status do Pedido", "chave": "status_pedido", "tipo": "list", "valores": ["Aguardando pagamento", "Em separação", "Enviado", "Entregue", "Cancelado"]},
+    {"nome": "Código de Rastreio", "chave": "codigo_rastreio", "tipo": "text"},
+    {"nome": "Valor do Pedido", "chave": "valor_pedido", "tipo": "number"},
+    {"nome": "Cupom Utilizado", "chave": "cupom_utilizado", "tipo": "text"}
+  ],
+  
+  "times": [
+    {"nome": "Atendimento", "descricao": "Atendimento ao cliente", "tipo": "atendimento", "auto_assign": true},
+    {"nome": "Vendas", "descricao": "Time de vendas e conversão", "tipo": "vendas", "auto_assign": true},
+    {"nome": "Pós-Venda", "descricao": "Trocas e devoluções", "tipo": "pos-venda", "auto_assign": false}
+  ],
+  
+  "agentes": [
+    {"role": "administrator", "time_tipo": "vendas", "especialidade": "Gerente de Vendas"},
+    {"role": "agent", "time_tipo": "atendimento", "especialidade": "Supervisor", "custom_role": "Supervisor de Atendimento"},
+    {"role": "agent", "time_tipo": "atendimento", "especialidade": "Atendente", "custom_role": "Atendente"},
+    {"role": "agent", "time_tipo": "atendimento", "especialidade": "Atendente"},
+    {"role": "agent", "time_tipo": "vendas", "especialidade": "Vendedor"},
+    {"role": "agent", "time_tipo": "vendas", "especialidade": "Vendedor"},
+    {"role": "agent", "time_tipo": "pos-venda", "especialidade": "Pós-Venda"}
+  ],
+  
+  "etiquetas": [
+    {"titulo": "pedido", "cor": "#27AE60"}, {"titulo": "rastreamento", "cor": "#3498DB"},
+    {"titulo": "troca", "cor": "#E67E22"}, {"titulo": "devolucao", "cor": "#E74C3C"},
+    {"titulo": "pagamento", "cor": "#9B59B6"}, {"titulo": "estoque", "cor": "#F39C12"},
+    {"titulo": "frete", "cor": "#1ABC9C"}, {"titulo": "cupom", "cor": "#F1C40F"},
+    {"titulo": "urgente", "cor": "#FF0000"}, {"titulo": "vip", "cor": "#8E44AD"},
+    {"titulo": "primeira-compra", "cor": "#16A085"}, {"titulo": "recompra", "cor": "#2980B9"}
+  ],
+  
+  "respostas_prontas": [
+    {"codigo": "ola", "texto": "Olá! 👋 Seja bem-vindo à nossa loja! Meu nome é {{agent.first_name}}. Como posso ajudar?"},
+    {"codigo": "rastreio", "texto": "Vou verificar o rastreamento do seu pedido! Por favor, me informe o número do pedido."},
+    {"codigo": "troca", "texto": "Claro! Fazemos trocas em até 7 dias após o recebimento. Pode me enviar uma foto do item?"},
+    {"codigo": "prazo", "texto": "⏰ Prazos de entrega:\n• Região Metropolitana: 2-3 dias\n• Outras capitais: 3-5 dias\n• Interior: 5-10 dias\n\nQual seu CEP?"},
+    {"codigo": "pagamento", "texto": "💳 Aceitamos:\n• Cartão (até 12x sem juros)\n• PIX (5% desconto)\n• Boleto (à vista)\n\nQual você prefere?"}
+  ],
+  
+  "automacoes": [
+    {"nome": "Auto-assign Vendas", "descricao": "Atribui novas conversas para vendas", "evento": "conversation_created", "conditions": [{"attribute_key": "status", "filter_operator": "equal_to", "values": ["open"]}], "actions": [{"action_name": "assign_team", "time_tipo": "vendas"}, {"action_name": "add_label", "action_params": ["novo-lead"]}]},
+    {"nome": "VIP → Prioridade", "descricao": "Prioriza clientes VIP", "evento": "conversation_created", "conditions": [{"attribute_key": "customer_type", "filter_operator": "equal_to", "values": ["VIP"]}], "actions": [{"action_name": "change_priority", "action_params": ["high"]}, {"action_name": "add_label", "action_params": ["vip"]}, {"action_name": "add_sla", "sla_nome": "SLA VIP"}]},
+    {"nome": "Trocas → Pós-Venda", "descricao": "Encaminha trocas para pós-venda", "evento": "message_created", "conditions": [{"attribute_key": "content", "filter_operator": "contains", "values": ["troca", "devolução", "devolver"]}], "actions": [{"action_name": "assign_team", "time_tipo": "pos-venda"}, {"action_name": "add_label", "action_params": ["troca"]}]}
+  ],
+  
+  "notas_contato_exemplos": [
+    "Cliente VIP desde 2021. Compra média de R$ 500/mês. Mora em SP.",
+    "Influenciadora digital. Parceria de divulgação. Dar cupom especial.",
+    "Reclamação sobre entrega em 2023 (resolvida). Monitorar satisfação."
+  ],
+  
+  "exemplo_mensagens": {
+    "cliente": ["Onde está meu pedido #12345?", "Não recebi o código de rastreamento", "Quero trocar o produto", "O produto chegou com defeito", "Quanto tempo demora para chegar?"],
+    "agente": ["Vou verificar seu pedido agora mesmo!", "Seu pedido foi enviado! Código: XX123BR", "A troca pode ser feita em até 7 dias.", "Sinto muito! Vou solicitar a troca imediata.", "Para seu CEP o prazo é de 3-5 dias úteis."]
+  },
+  
+  "csat": {"ativo": true, "enviar_apos_resolucao": true}
+}

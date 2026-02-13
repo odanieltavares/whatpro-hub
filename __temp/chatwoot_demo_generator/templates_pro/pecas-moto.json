@@ -1,0 +1,82 @@
+{
+  "nome": "Loja de Peças para Moto PRO",
+  "descricao": "Template completo com TODAS as features do Chatwoot para lojas de peças e acessórios",
+  "num_contatos": 35,
+  "num_conversas": 50,
+  
+  "sla_policies": [
+    {"nome": "SLA Padrão", "descricao": "SLA para atendimentos normais", "primeira_resposta_minutos": 10, "proxima_resposta_minutos": 30, "tempo_resolucao_minutos": 720},
+    {"nome": "SLA Urgente", "descricao": "SLA para entregas urgentes", "primeira_resposta_minutos": 5, "proxima_resposta_minutos": 15, "tempo_resolucao_minutos": 240}
+  ],
+  
+  "custom_roles": [
+    {"nome": "Gerente de Loja", "descricao": "Acesso total e relatórios", "permissoes": ["conversation_manage", "contact_manage", "report_manage"]},
+    {"nome": "Vendedor", "descricao": "Acesso às próprias conversas", "permissoes": ["conversation_unassigned_manage", "contact_manage"]}
+  ],
+  
+  "custom_attributes_contato": [
+    {"nome": "Tipo de Moto", "chave": "tipo_moto", "tipo": "list", "valores": ["Honda", "Yamaha", "Suzuki", "Kawasaki", "BMW", "Harley", "Outras"]},
+    {"nome": "Modelo da Moto", "chave": "modelo_moto", "tipo": "text"},
+    {"nome": "Cilindrada", "chave": "cilindrada", "tipo": "list", "valores": ["125cc", "150cc", "160cc", "250cc", "300cc+", "600cc+"]},
+    {"nome": "Cliente Frequente", "chave": "cliente_frequente", "tipo": "checkbox"},
+    {"nome": "CEP", "chave": "cep", "tipo": "text"}
+  ],
+  
+  "custom_attributes_conversa": [
+    {"nome": "Tipo de Produto", "chave": "tipo_produto", "tipo": "list", "valores": ["Peças motor", "Freios", "Suspensão", "Elétrica", "Pneus", "Óleos", "Equipamentos", "Acessórios"]},
+    {"nome": "Valor do Pedido", "chave": "valor_pedido", "tipo": "number"},
+    {"nome": "Precisa Instalação", "chave": "precisa_instalacao", "tipo": "checkbox"},
+    {"nome": "Código de Rastreio", "chave": "codigo_rastreio", "tipo": "text"}
+  ],
+  
+  "times": [
+    {"nome": "Atendimento", "descricao": "Atendimento inicial", "tipo": "atendimento", "auto_assign": true},
+    {"nome": "Vendas Peças", "descricao": "Vendas de peças", "tipo": "vendas-pecas", "auto_assign": true},
+    {"nome": "Equipamentos", "descricao": "Equipamentos de proteção", "tipo": "equipamentos", "auto_assign": true},
+    {"nome": "Oficina", "descricao": "Serviços e instalação", "tipo": "oficina", "auto_assign": false},
+    {"nome": "Logística", "descricao": "Entregas e expedição", "tipo": "logistica", "auto_assign": false}
+  ],
+  
+  "agentes": [
+    {"role": "administrator", "time_tipo": "vendas-pecas", "especialidade": "Gerente de Loja"},
+    {"role": "agent", "time_tipo": "atendimento", "especialidade": "Atendente"},
+    {"role": "agent", "time_tipo": "vendas-pecas", "especialidade": "Vendedor de Peças", "custom_role": "Vendedor"},
+    {"role": "agent", "time_tipo": "vendas-pecas", "especialidade": "Especialista em Motos"},
+    {"role": "agent", "time_tipo": "equipamentos", "especialidade": "Vendedor de Equipamentos"},
+    {"role": "agent", "time_tipo": "oficina", "especialidade": "Mecânico"},
+    {"role": "agent", "time_tipo": "logistica", "especialidade": "Expedição"}
+  ],
+  
+  "etiquetas": [
+    {"titulo": "pecas-originais", "cor": "#27AE60"}, {"titulo": "pecas-genericas", "cor": "#F39C12"},
+    {"titulo": "equipamento", "cor": "#3498DB"}, {"titulo": "capacete", "cor": "#9B59B6"},
+    {"titulo": "escape", "cor": "#E74C3C"}, {"titulo": "pneus", "cor": "#1ABC9C"},
+    {"titulo": "oleo", "cor": "#F1C40F"}, {"titulo": "revisao", "cor": "#95A5A6"},
+    {"titulo": "entrega-urgente", "cor": "#FF0000"}, {"titulo": "instalacao", "cor": "#2980B9"}
+  ],
+  
+  "respostas_prontas": [
+    {"codigo": "ola", "texto": "E aí, motociclista! 👋🏍️ Meu nome é {{agent.first_name}}. Qual é a sua moto e como posso ajudar?"},
+    {"codigo": "estoque", "texto": "Deixa eu verificar no estoque! Um momento... 🔍"},
+    {"codigo": "frete", "texto": "📦 Entregas:\n🚚 SP Capital: mesmo dia (até 15h)\n🚚 Grande SP: 1-2 dias\n🚚 Outras capitais: 3-5 dias\n\nQual seu CEP?"},
+    {"codigo": "pagamento", "texto": "💳 Pagamento:\n✅ PIX: 10% desconto\n✅ Cartão: até 3x sem juros\n✅ Boleto: à vista"}
+  ],
+  
+  "automacoes": [
+    {"nome": "Peças → Vendas Peças", "descricao": "Direciona pedidos de peças", "evento": "message_created", "conditions": [{"attribute_key": "content", "filter_operator": "contains", "values": ["peça", "pastilha", "corrente", "coroa"]}], "actions": [{"action_name": "assign_team", "time_tipo": "vendas-pecas"}, {"action_name": "add_label", "action_params": ["pecas-originais"]}]},
+    {"nome": "Urgente → Prioridade", "descricao": "Prioriza entregas urgentes", "evento": "message_created", "conditions": [{"attribute_key": "content", "filter_operator": "contains", "values": ["urgente", "hoje", "rápido"]}], "actions": [{"action_name": "change_priority", "action_params": ["high"]}, {"action_name": "add_label", "action_params": ["entrega-urgente"]}, {"action_name": "add_sla", "sla_nome": "SLA Urgente"}]}
+  ],
+  
+  "notas_contato_exemplos": [
+    "Cliente frequente, sempre compra peças para CG 160. Prefere peças originais.",
+    "Mecânico autônomo, compra em quantidade. Dar desconto especial.",
+    "Motoboy, precisa de entregas rápidas. Sempre paga no PIX."
+  ],
+  
+  "exemplo_mensagens": {
+    "cliente": ["Vocês têm pastilha de freio para CG 160?", "Preciso de um capacete X11", "Quanto custa a corrente da XTZ 250?", "Vocês fazem entrega?", "Vocês instalam escape?"],
+    "agente": ["Olá! Sim, temos original e genérica. Qual prefere?", "Temos vários modelos! Qual seu número e estilo?", "Está R$ 245. Quer kit completo?", "Fazemos sim! Para qual CEP?", "Instalamos! R$ 80 a mão de obra."]
+  },
+  
+  "csat": {"ativo": true, "enviar_apos_resolucao": true}
+}

@@ -1,0 +1,69 @@
+{
+  "nome": "Escritório de Contabilidade",
+  "descricao": "Demo para empresas de contabilidade e serviços contábeis",
+  "num_contatos": 25,
+  "num_conversas": 35,
+  "etiquetas": [
+    "declaracao-ir",
+    "mei",
+    "abertura-empresa",
+    "folha-pagamento",
+    "certidoes",
+    "urgente",
+    "consultoria",
+    "fiscal",
+    "trabalhista",
+    "societario"
+  ],
+  "custom_attributes": {
+    "tipo_cliente": ["MEI", "ME", "EPP", "Ltda", "Pessoa Física"],
+    "regime_tributario": ["Simples Nacional", "Lucro Presumido", "Lucro Real"],
+    "setor": ["Comércio", "Serviços", "Indústria", "Tecnologia", "Saúde"]
+  },
+  "exemplo_mensagens": {
+    "cliente": [
+      "Olá, preciso declarar meu Imposto de Renda. Vocês podem me ajudar?",
+      "Bom dia! Quero abrir um MEI, quais documentos preciso?",
+      "Preciso de uma certidão negativa urgente para uma licitação",
+      "Minha empresa está irregular na Receita, como resolvo isso?",
+      "Gostaria de saber os valores para fazer a folha de pagamento",
+      "Preciso mudar de MEI para ME, qual o procedimento?",
+      "Vocês fazem consultoria para planejamento tributário?",
+      "Meu CNPJ foi suspenso, o que faço?",
+      "Quero encerrar minha empresa, como funciona?",
+      "Preciso de um balanço patrimonial urgente",
+      "Tenho uma notificação da Receita Federal, podem me ajudar?",
+      "Quanto custa para abrir uma empresa Ltda?",
+      "Vocês entregam DCTF e EFD-Contribuições?",
+      "Preciso alterar o contrato social, quais documentos necessários?",
+      "Meu certificado digital vai vencer, como renovo?",
+      "Gostaria de migrar para o Simples Nacional",
+      "Preciso de orientação sobre emissão de nota fiscal",
+      "Quanto tempo demora para abrir um CNPJ?",
+      "Vocês fazem auditoria contábil?",
+      "Preciso recuperar minhas obrigações acessórias atrasadas"
+    ],
+    "agente": [
+      "Olá! Sim, fazemos declaração de IR. Você é MEI ou assalariado?",
+      "Bom dia! Para abrir MEI você precisa de RG, CPF e comprovante de residência. Posso iniciar o processo?",
+      "Entendi a urgência. Em quanto tempo você precisa da certidão?",
+      "Vou verificar a situação do seu CNPJ. Qual o número da sua empresa?",
+      "Temos pacotes a partir de R$ 15,00 por funcionário. Quantos colaboradores você tem?",
+      "A migração de MEI para ME leva cerca de 15 dias. Vou te enviar a lista de documentos necessários.",
+      "Sim, fazemos consultoria tributária! Vou transferir para nosso especialista.",
+      "Vou precisar do número do seu CNPJ para analisar a situação.",
+      "O encerramento pode levar de 30 a 60 dias. Sua empresa está com as obrigações em dia?",
+      "Posso preparar o balanço. Você tem a contabilidade atualizada?",
+      "Vou precisar da notificação para analisar. Pode me enviar?",
+      "O custo varia conforme o porte e atividade. Qual será o ramo de atuação?",
+      "Sim, entregamos todas as obrigações acessórias. Posso agendar uma reunião?",
+      "Para alteração contratual preciso do contrato atual e documentos dos sócios.",
+      "A renovação deve ser feita com 30 dias de antecedência. Vou te passar o processo.",
+      "Posso verificar se sua empresa se enquadra no Simples. Qual o faturamento anual?",
+      "Vou te orientar sobre NFe. Sua empresa já tem certificado digital?",
+      "O prazo médio é de 5 a 7 dias úteis após protocolo na Junta Comercial.",
+      "Fazemos auditoria sim. Vou agendar uma conversa com nosso auditor.",
+      "Vou precisar de um período de apuração. A partir de quando está atrasado?"
+    ]
+  }
+}
