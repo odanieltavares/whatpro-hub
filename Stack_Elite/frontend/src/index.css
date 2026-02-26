@@ -1,0 +1,285 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: "Inter", sans-serif;
+  background: #030712;
+  color: #f9fafb;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- React Big Calendar Premium Dark (Solid) --- */
+.dark .rbc-calendar * {
+  /* Force dark text globally to avoid silent black colors */
+  color: #cbd5e1;
+}
+
+.dark .rbc-month-view,
+.dark .rbc-time-view,
+.dark .rbc-agenda-view {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background-color: #0f172a !important; /* Solid slate-900 */
+}
+
+/* Ensure no white background in time/week views */
+.dark .rbc-time-content,
+.dark .rbc-time-gutter,
+.dark .rbc-time-header-content {
+  background-color: transparent !important;
+}
+
+.rbc-allday-cell {
+  display: none !important;
+}
+
+/* Header Cells */
+.dark .rbc-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #f1f5f9 !important; /* brighter text for header */
+  text-transform: capitalize;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .rbc-header + .rbc-header {
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Borders across grid */
+.dark .rbc-month-row,
+.dark .rbc-day-bg,
+.dark .rbc-time-slot,
+.dark .rbc-timeslot-group,
+.dark .rbc-time-header-content {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Grid Days */
+.dark .rbc-day-bg {
+  transition: background-color 0.2s ease;
+  background: transparent !important;
+}
+.dark .rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .rbc-day-bg:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Off-range and Today overrides */
+.dark .rbc-off-range-bg {
+  background-color: #020617 !important; /* Slate-950, darker than main grid */
+}
+
+.dark .rbc-today {
+  background-color: #1e293b !important; /* Slate-800, highlighting Today without breaking dark mode */
+}
+
+/* Time Gutters (hours on left) */
+.dark .rbc-timeslot-group {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .rbc-label {
+  color: #94a3b8 !important; /* slate-400 */
+  padding: 4px;
+}
+
+/* Event Base Container */
+.dark .rbc-event {
+  background: none; 
+  padding: 0;
+  border-radius: 0.375rem !important;
+  overflow: hidden; 
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.dark .rbc-event-content {
+  height: 100%;
+}
+
+.dark .rbc-button-link {
+  color: #e5e7eb !important;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+.dark .rbc-button-link:hover {
+  color: #60a5fa !important;
+}
+
+.dark .rbc-time-content {
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .rbc-time-header.rbc-overflowing {
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .rbc-current-time-indicator {
+  background-color: #3b82f6 !important; 
+  height: 2px !important;
+}
+
+/* Time Slot vertical breathing */
+.dark .rbc-time-slot {
+  min-height: 48px;
+}
+
+.dark .rbc-time-view .rbc-event {
+  border-radius: 6px !important;
+}
+
+/* Month view tweaks */
+.rbc-dark-override .rbc-month-view .rbc-event {
+  height: auto !important; 
+  min-height: auto;
+  margin-bottom: 2px; /* Espacamento natural entre eventos no mes */
+}
+
+/* Fix event vertical push-to-bottom reported on Month View */
+.rbc-dark-override .rbc-row-content {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.rbc-dark-override .rbc-month-view {
+  min-height: 700px;
+}
+
+.rbc-dark-override .rbc-month-row {
+  min-height: 140px; 
+  flex: 1 0 0;
+}
+
+/* Estilizando o botão de "mostrar mais" */
+.rbc-dark-override .rbc-show-more {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  text-align: center;
+  margin: 3px 6px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+}
+.rbc-dark-override .rbc-show-more:hover {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+/* Scrollbar Customizada (Dark Mode) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #374151; /* gray-700 */
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* gray-600 */
+}
+
+/* Aplicando no body geral também para consistência */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #030712; /* gray-950 */
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937; /* gray-800 */
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151; /* gray-700 */
+}
+
+/* Permitir rolagem vertical apenas no hover nas linhas do mês com muitos cards */
+.rbc-month-row {
+  overflow-y: hidden !important;
+  /* Prevents the calendar from breaking layout completely when scrolling if set statically, but fine */
+}
+
+/* Bring row to front so the overflow isn't hidden by the row below it. Wait, the actual calendar hides anything outside the row if the row is flex: 1. */
+.rbc-month-row:hover {
+  overflow-y: overlay !important; /* Overlay prevents layout shift on hover in Webkit */
+  z-index: 10;
+}
+
+/* Mantenha o grid de dias de fundo fixo (sticky) para não acabar quando rolar */
+.rbc-month-row .rbc-row-bg {
+  position: sticky !important;
+  top: 0;
+  z-index: 1;
+}
+
+/* Mantenha os números dos dias (data) fixos no topo */
+.rbc-month-row .rbc-row-content > .rbc-row:first-child {
+  position: sticky !important;
+  top: 0;
+  z-index: 20;
+}
+
+/* Sombra no texto (text-shadow) pesada em vez de cor de fundo, 
+   para garantir que o dia fique legível mesmo quando os cards passarem por baixo dele */
+.rbc-month-row .rbc-row-content > .rbc-row:first-child .rbc-date-cell {
+  text-shadow: 
+    0px  1px 4px rgba(255,255,255,0.9),
+    0px -1px 4px rgba(255,255,255,0.9),
+    1px  0px 4px rgba(255,255,255,0.9),
+    -1px 0px 4px rgba(255,255,255,0.9),
+    0px  2px 6px rgba(255,255,255,0.9);
+  padding: 4px 6px;
+  font-weight: 600;
+}
+
+.dark .rbc-month-row .rbc-row-content > .rbc-row:first-child .rbc-date-cell {
+  text-shadow: 
+    0px  1px 4px rgba(15,23,42,0.9), /* slate-900 */
+    0px -1px 4px rgba(15,23,42,0.9),
+    1px  0px 4px rgba(15,23,42,0.9),
+    -1px 0px 4px rgba(15,23,42,0.9),
+    0px  2px 6px rgba(15,23,42,0.9);
+}
+
+/* Estilizar barra de rolagem injetada no rbc-month-row */
+.rbc-month-row::-webkit-scrollbar {
+  width: 6px;
+}
+.rbc-month-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rbc-month-row::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+}
+.rbc-month-row:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2); 
+}
+.dark .rbc-month-row:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2); 
+}

@@ -36,6 +36,11 @@ type Config struct {
 
 	// CORS
 	CORSOrigins string
+
+	// Asaas Billing
+	AsaasAPIKey  string
+	AsaasBaseURL string
+	AsaasWebhookToken string
 }
 
 // Load reads configuration from environment variables
@@ -50,9 +55,12 @@ func Load() (*Config, error) {
 		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379"),
 		ChatwootURL:      getEnv("CHATWOOT_URL", "http://localhost:8080"),
 		ChatwootAPIKey:   getEnv("CHATWOOT_API_KEY", ""),
-		JWTSecret:        getEnv("JWT_SECRET", ""),
-		JWTExpireMinutes: 60 * 24, // 24 hours
-		CORSOrigins:      getEnv("CORS_ORIGINS", "*"),
+		JWTSecret:         getEnv("JWT_SECRET", ""),
+		JWTExpireMinutes:  60 * 24, // 24 hours
+		CORSOrigins:       getEnv("CORS_ORIGINS", "*"),
+		AsaasAPIKey:       getEnv("ASAAS_API_KEY", ""),
+		AsaasBaseURL:      getEnv("ASAAS_BASE_URL", "https://sandbox.asaas.com/api/v3"),
+		AsaasWebhookToken: getEnv("ASAAS_WEBHOOK_TOKEN", ""),
 	}
 
 	// Validate required fields

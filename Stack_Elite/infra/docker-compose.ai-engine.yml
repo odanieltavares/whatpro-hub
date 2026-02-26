@@ -1,0 +1,117 @@
+version: "3.8"
+
+# ==========================================
+# ELITE SDR — OSS AI ENGINE (Motor de Inteligência OSS)
+# APIs de IA Open-Source que alimentam o pipeline do SDR Agent.
+# Whisper, LLaVA, GLiNER, Presidio, Sentiment, RAG/FastEmbed.
+#
+# Pré-requisito: docker-compose.core.yml deve estar UP (rede elite_network).
+# Comando: docker-compose -f docker-compose.ai-engine.yml up -d
+# ==========================================
+
+services:
+
+  # ── GLiNER: Extração de Entidades do Lead ─────────────────────────────────
+  # Detecta: VEÍCULO_INTERESSE, ORÇAMENTO, INTENÇÃO, etc.
+  ai_gliner:
+    build:
+      context: ../services/gliner_service
+    container_name: ai_gliner
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - MODEL_NAME=urchade/gliner_multi-v2.1
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ── PRESIDIO + TextStat: Segurança, Anti-Spam e Mascaramento PII ──────────
+  # Mascara CPF, CNPJ, e-mail, telefone antes do LLM.
+  ai_security:
+    build:
+      context: ../services/security_service
+    container_name: ai_security
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── Análise de Sentimento ─────────────────────────────────────────────────
+  # Detecta frustração/urgência para acionar alertas de SLA.
+  ai_sentiment:
+    build:
+      context: ../services/sentiment_service
+    container_name: ai_sentiment
+    restart: unless-stopped
+    ports:
+      - "8003:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── FastEmbed + BGE-Reranker: RAG Engine ─────────────────────────────────
+  # Gera embeddings para o pgvector e reordena resultados de busca semântica.
+  ai_rag:
+    build:
+      context: ../services/rag_service
+    container_name: ai_rag
+    restart: unless-stopped
+    ports:
+      - "8004:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+
+  # ── Whisper: Transcrição de Áudio ─────────────────────────────────────────
+  # Converte áudios de WhatsApp (OGG) para texto antes do pipeline.
+  ai_whisper:
+    build:
+      context: ../services/whisper_service
+    container_name: ai_whisper
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - MODEL=base
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ── LLaVA: Análise Multimodal de Imagens ─────────────────────────────────
+  # Analisa fotos enviadas pelo cliente (veículo de troca, documentos, etc).
+  ai_llava:
+    build:
+      context: ../services/llava_service
+    container_name: ai_llava
+    restart: unless-stopped
+    ports:
+      - "8006:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+networks:
+  elite_network:
+    external: true
+    name: elite_network

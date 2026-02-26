@@ -1,0 +1,172 @@
+version: "3.8"
+
+# ==========================================
+# ELITE SDR — INTERNAL MCP SERVERS
+# Servidores MCP internos que expõem ferramentas tipadas ao agente via SSE.
+# Cada servidor é um módulo de responsabilidade única.
+#
+# Pré-requisito: docker-compose.core.yml deve estar UP.
+# Para integração com AI: docker-compose.ai-engine.yml também deve estar UP.
+# Comando: docker-compose -f docker-compose.mcp.yml up -d
+#
+# Portas SSE (para configurar no n8n como "MCP Client"):
+#   mcp_chatwoot → http://mcp_chatwoot:8787  (Gerenciamento de conversas Chatwoot)
+#   mcp_fipe     → http://mcp_fipe:8787      (Preços FIPE + insights de depreciação)
+#   mcp_stock    → http://mcp_stock:8787     (Busca semântica de estoque de veículos)
+#   mcp_scoring  → http://mcp_scoring:8787   (BANT Score e classificação MQL/SQL)
+#   mcp_media    → http://mcp_media:8787     (Transcrição de áudio + análise de imagem)
+#   mcp_analytics→ http://mcp_analytics:8787 (Métricas, relatórios e análise com Gemini)
+# ==========================================
+
+services:
+
+  # ── Chatwoot MCP: Controle de Conversas ──────────────────────────────────
+  mcp_chatwoot:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:chatwoot
+    container_name: elite_mcp_chatwoot
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - CHATWOOT_URL=${CHATWOOT_URL}
+      - CHATWOOT_API_KEY=${CHATWOOT_API_KEY}
+      - CHATWOOT_ACCOUNT_ID=${CHATWOOT_ACCOUNT_ID}
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── FIPE MCP: Preços e Estratégia de Pricing ─────────────────────────────
+  mcp_fipe:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:fipe
+    container_name: elite_mcp_fipe
+    restart: unless-stopped
+    ports:
+      - "8788:8787"
+    environment:
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Stock MCP: Busca Semântica de Inventário ───────────────────────────────
+  mcp_stock:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:stock
+    container_name: elite_mcp_stock
+    restart: unless-stopped
+    ports:
+      - "8789:8787"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@elite_postgres:5432/${POSTGRES_DB}
+      - RAG_SERVICE_URL=http://ai_rag:8000
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── Scoring MCP: BANT, Classificação e Handoff ─────────────────────────────
+  mcp_scoring:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:scoring
+    container_name: elite_mcp_scoring
+    restart: unless-stopped
+    ports:
+      - "8790:8787"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@elite_postgres:5432/${POSTGRES_DB}
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Media MCP: Whisper (Áudio) + LLaVA (Imagem) ───────────────────────────
+  mcp_media:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:whisper-llava
+    container_name: elite_mcp_media
+    restart: unless-stopped
+    ports:
+      - "8791:8787"
+    environment:
+      - WHISPER_URL=http://ai_whisper:9000
+      - LLAVA_URL=http://ai_llava:8006
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Analytics MCP: Relatórios e Análise com Gemini ────────────────────────
+  mcp_analytics:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:analytics
+    container_name: elite_mcp_analytics
+    restart: unless-stopped
+    ports:
+      - "8792:8787"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@elite_postgres:5432/${POSTGRES_DB}
+      - LANGFUSE_HOST=http://elite_langfuse:3000
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ── Scheduling MCP: Agendas e Maps ────────────────────────
+  mcp_scheduling:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:scheduling
+    container_name: elite_mcp_scheduling
+    restart: unless-stopped
+    ports:
+      - "8793:8787"
+    environment:
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  elite_network:
+    external: true
+    name: elite_network

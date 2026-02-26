@@ -33,6 +33,7 @@ type Handler struct {
 	GatewayService      *services.GatewayService
 	BillingService      *services.BillingService
 	ChatService         *services.ChatService // Internal Chat Service
+	StatsService        *services.StatsService
 	Validator           *validator.Validate
 	Logger              *log.Logger
 }
@@ -58,7 +59,7 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 	authService := services.NewAuthService(sessionRepo, userRepo)
 	entitlementsService := services.NewEntitlementsService(db) // Initialize EntitlementsService
 	kanbanService := services.NewKanbanService(kanbanRepo)
-	gatewayService := services.NewGatewayService(gatewayRepo, nil, accountRepo) // TODO: Add ProviderRepo
+	gatewayService := services.NewGatewayService(gatewayRepo, providerRepo, accountRepo)
 	billingService := services.NewBillingService(billingRepo, userRepo, "ASAAS_API_KEY")
 
 	// Provider service needs encryption key (32 bytes for AES-256)
@@ -73,6 +74,9 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 	chatRepo := repositories.NewChatRepository(db)
 	chatwootClient := chatwoot.New(cfg.ChatwootURL, cfg.ChatwootAPIKey)
 	chatService := services.NewChatService(chatRepo, auditRepo, userRepo, chatwootClient)
+
+	// Initialize Stats service
+	statsService := services.NewStatsService(db)
 
 	return &Handler{
 		DB:                  db,
@@ -89,6 +93,7 @@ func NewHandler(db *gorm.DB, rdb *redis.Client, cfg *config.Config) *Handler {
 		GatewayService:      gatewayService,
 		BillingService:      billingService,
 		ChatService:         chatService, // Internal Chat
+		StatsService:        statsService,
 		Validator:           middleware.GetValidator(),
 		Logger:              log.Default(),
 	}

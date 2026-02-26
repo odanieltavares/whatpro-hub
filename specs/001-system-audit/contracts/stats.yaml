@@ -1,0 +1,561 @@
+openapi: "3.0.3"
+info:
+  title: WhatPro Hub — Account Stats API
+  version: "1.0"
+  description: |
+    Endpoint de estatísticas por conta. Retorna métricas agregadas calculadas
+    em tempo real a partir do banco de dados.
+
+paths:
+  /api/v1/accounts/{accountId}/stats:
+    get:
+      summary: Get account dashboard statistics
+      description: |
+        Retorna métricas reais agregadas para o dashboard:
+        instâncias ativas, mensagens do dia, clientes ativos e workflows disparados.
+
+        Requer autenticação JWT. O usuário deve pertencer à conta solicitada
+        (tenant isolation via RequireAccountAccess middleware).
+      tags:
+        - Accounts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID da conta
+      responses:
+        "200":
+          description: Estatísticas calculadas com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+              example:
+                success: true
+                status: 200
+                data:
+                  active_instances: 5
+                  messages_today: 1243
+                  active_clients: 87
+                  workflows_triggered: 34
+                  generated_at: "2026-02-19T14:30:00Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Troca o refresh token (HTTPOnly cookie) por um novo access token.
+        O refresh token é lido automaticamente do cookie — não precisa ser
+        enviado no body.
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: Novo access token gerado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+              example:
+                success: true
+                status: 200
+                data:
+                  access_token: "eyJhbGci..."
+                  expires_in: 900
+        "401":
+          description: Refresh token inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/accounts/{accountId}/workflows:
+    get:
+      summary: List workflow definitions
+      tags:
+        - Workflows
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de workflows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowListResponse"
+
+    post:
+      summary: Create workflow definition
+      tags:
+        - Workflows
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkflowRequest"
+      responses:
+        "201":
+          description: Workflow criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/accounts/{accountId}/workflows/{workflowId}:
+    get:
+      summary: Get workflow definition
+      tags:
+        - Workflows
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Workflow encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowResponse"
+
+    put:
+      summary: Update workflow definition
+      tags:
+        - Workflows
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkflowRequest"
+      responses:
+        "200":
+          description: Workflow atualizado
+
+    delete:
+      summary: Delete workflow definition
+      tags:
+        - Workflows
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Workflow deletado
+
+  /api/v1/billing/subscribe:
+    post:
+      summary: Subscribe account to a plan
+      description: |
+        Cria um cliente e uma assinatura na Asaas para a conta.
+        Retorna o link de pagamento gerado pela Asaas.
+      tags:
+        - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscribeRequest"
+      responses:
+        "201":
+          description: Assinatura criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscribeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/webhooks/chatwoot:
+    post:
+      summary: Receive Chatwoot webhook events
+      description: |
+        Recebe eventos do Chatwoot e processa:
+        - conversation_created → cria card no Kanban
+        - conversation_resolved → move card para coluna final
+        - conversation_updated → atualiza dados do card
+        - message_created → incrementa contador de mensagens
+      tags:
+        - Webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatwootWebhookPayload"
+      responses:
+        "200":
+          description: Evento processado com sucesso
+        "400":
+          description: Payload inválido (event_type desconhecido)
+        "500":
+          description: Erro interno (logado, nunca exposto ao Chatwoot)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    StatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        status:
+          type: integer
+          example: 200
+        data:
+          type: object
+          properties:
+            active_instances:
+              type: integer
+              minimum: 0
+            messages_today:
+              type: integer
+              minimum: 0
+            active_clients:
+              type: integer
+              minimum: 0
+            workflows_triggered:
+              type: integer
+              minimum: 0
+            generated_at:
+              type: string
+              format: date-time
+
+    RefreshResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: integer
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            expires_in:
+              type: integer
+              description: Segundos até expirar (padrão 900 = 15min)
+
+    WorkflowListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: integer
+        data:
+          type: object
+          properties:
+            workflows:
+              type: array
+              items:
+                $ref: "#/components/schemas/Workflow"
+            total:
+              type: integer
+
+    WorkflowResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: integer
+        data:
+          $ref: "#/components/schemas/Workflow"
+
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: integer
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        description:
+          type: string
+        nodes:
+          type: array
+          items:
+            type: object
+        edges:
+          type: array
+          items:
+            type: object
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateWorkflowRequest:
+      type: object
+      required:
+        - name
+        - nodes
+        - edges
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        description:
+          type: string
+        nodes:
+          type: array
+          items:
+            type: object
+        edges:
+          type: array
+          items:
+            type: object
+
+    UpdateWorkflowRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        nodes:
+          type: array
+          items:
+            type: object
+        edges:
+          type: array
+          items:
+            type: object
+        is_active:
+          type: boolean
+
+    SubscribeRequest:
+      type: object
+      required:
+        - account_id
+        - plan_id
+        - name
+        - email
+        - cpf_cnpj
+        - billing_cycle
+      properties:
+        account_id:
+          type: integer
+        plan_id:
+          type: string
+          enum: [basic, pro, enterprise]
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        cpf_cnpj:
+          type: string
+        billing_cycle:
+          type: string
+          enum: [MONTHLY, YEARLY]
+
+    SubscribeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: integer
+        data:
+          type: object
+          properties:
+            subscription_id:
+              type: string
+            payment_url:
+              type: string
+              format: uri
+            status:
+              type: string
+
+    ChatwootWebhookPayload:
+      type: object
+      required:
+        - event
+        - account
+      properties:
+        event:
+          type: string
+          enum:
+            - conversation_created
+            - conversation_resolved
+            - conversation_updated
+            - message_created
+        account:
+          type: object
+          properties:
+            id:
+              type: integer
+        conversation:
+          type: object
+          properties:
+            id:
+              type: integer
+            inbox_id:
+              type: integer
+            status:
+              type: string
+        contact:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        message:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        status:
+          type: integer
+
+  responses:
+    Unauthorized:
+      description: Token inválido ou expirado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "unauthorized"
+            status: 401
+
+    Forbidden:
+      description: Sem permissão para este recurso
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "forbidden"
+            status: 403
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    ValidationError:
+      description: Dados de entrada inválidos
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+              status:
+                type: integer
+                example: 400
+              details:
+                type: array
+                items:
+                  type: object
+
+    InternalError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "internal server error"
+            status: 500

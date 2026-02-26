@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/inspector",
+        "--streamableHttp",
+        "https://mcp.context7.com/mcp",
+        "--header",
+        "CONTEXT7_API_KEY=${CONTEXT7_API_KEY}"
+      ]
+    },
+    "n8n-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "supergateway",
+        "--streamableHttp",
+        "https://n8n.seudominio.com.br/mcp-server/http",
+        "--header",
+        "authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlMjE1YTg4Zi01MDcyLTRmMzQtOGY1Yi0xNGM2NzhkY2ZlY2QiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6IjUzYTE0ZjdhLTc2MzktNGJjNy05YjdiLTliMDkwNWM2MGRlYSIsImlhdCI6MTc3MjAzMjkyOX0.C24oMMDDJhg3PriAeLqprSYNm8j_84I7UloQJUElRs8"
+      ]
+    }
+  }
+}

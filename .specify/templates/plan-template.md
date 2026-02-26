@@ -31,7 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Verify alignment with each applicable principle before proceeding:
+
+- [ ] **I. Security-First**: Input validated, rate limiting considered, no secrets in logs
+- [ ] **II. RBAC**: Required roles declared for all new endpoints
+- [ ] **III. API-First**: Response envelope consistent, status codes correct, Swagger updated
+- [ ] **IV. TDD**: Acceptance criteria defined in spec.md before implementation
+- [ ] **V. Tenant Isolation**: account_id scoping applied to all tenant-scoped queries
+- [ ] **VI. Async**: Non-critical I/O operations are async with panic recovery
+- [ ] **VII. Observability**: Write operations generate audit log, sensitive fields redacted
 
 ## Project Structure
 

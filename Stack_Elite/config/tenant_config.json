@@ -1,0 +1,51 @@
+{
+  "tenant_id": "b6e92d77-a859-42b7-a068-d01cabc2a101",
+  "nome_loja": "Auto Premium Elite Motors",
+  "tom_de_voz": "Consultivo e Especialista",
+  "config_json": {
+    "modules": {
+      "audio_whisper_enabled": true,
+      "vision_llava_enabled": true,
+      "langfuse_tracing_enabled": true,
+      "presidio_lgpd_enabled": true,
+      "textstat_spam_filter_enabled": true
+    },
+    "routing": {
+      "high_sentiment_anger_threshold": 0.8,
+      "handoff_anger_route": "support_team",
+      "handoff_sales_route": "sales_team_premium"
+    },
+    "sla_thresholds": {
+      "first_response_max_ms": 3000,
+      "max_audio_length_seconds": 120
+    }
+  },
+  "trade_in_policy": {
+    "aceita_troca": true,
+    "ano_minimo": 2012,
+    "marcas_proibidas": [
+      "Peugeot",
+      "Lifan"
+    ],
+    "exige_vistoria_presencial": true,
+    "alerta_de_negociacao_texto": "Nossos técnicos conseguem valorizar acima da média após uma avaliação presencial gratuita."
+  },
+  "financiamento_policy": {
+    "entrada_minima_percentual": 20,
+    "score_baixo_aceito": false,
+    "bancos_parceiros": [
+      "Itaú",
+      "Santander",
+      "BV Financeira"
+    ]
+  },
+  "gliner_active_labels": [
+    "INTENCAO",
+    "VEICULO_INTERESSE",
+    "VEICULO_TROCA",
+    "ORCAMENTO",
+    "CONDICAO_VEICULO",
+    "KILOMETRAGEM_MAXIMA",
+    "COR_DESEJADA"
+  ]
+}

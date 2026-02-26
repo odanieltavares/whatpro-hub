@@ -247,3 +247,30 @@ func (h *Handler) UpdateAccount(c *fiber.Ctx) error {
 		"account": account,
 	})
 }
+
+// GetAccountStats godoc
+// @Summary      Get account dashboard statistics
+// @Description  Returns real-time aggregated metrics: active instances, messages today, active clients, workflows triggered
+// @Tags         Accounts
+// @Produce      json
+// @Param        id   path      int  true  "Account ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]interface{}
+// @Failure      403  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]interface{}
+// @Router       /accounts/{id}/stats [get]
+// @Security     BearerAuth
+func (h *Handler) GetAccountStats(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil || id <= 0 {
+		return h.Error(c, fiber.StatusBadRequest, "Invalid account ID")
+	}
+
+	stats, err := h.StatsService.GetAccountStats(c.Context(), uint(id))
+	if err != nil {
+		return h.Error(c, fiber.StatusInternalServerError, "Failed to fetch account statistics")
+	}
+
+	return h.Success(c, stats)
+}

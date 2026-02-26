@@ -17,7 +17,7 @@ type TestStruct struct {
 }
 
 func TestValidator(t *testing.T) {
-	v := NewValidator()
+	v := GetValidator()
 
 	tests := []struct {
 		name    string

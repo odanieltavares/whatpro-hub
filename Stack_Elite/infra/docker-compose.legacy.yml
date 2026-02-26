@@ -1,0 +1,371 @@
+version: "3.8"
+
+# ==========================================
+# ELITE SDR STACK — Full Docker Compose
+# Includes: n8n, Postgres+pgvector, Redis, Metabase, LangFuse,
+#           8 AI Micro-model services, 6 MCP Servers
+# ==========================================
+
+services:
+  # ==========================================
+  # NÚCLEO DE ORQUESTRAÇÃO
+  # ==========================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_elite
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENFORCEMENT_MAX_EXECUTION_TIME=60 # Segurança de tempo de execução
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.5"
+
+  # ==========================================
+  # MEMÓRIA & BANCO DE DADOS
+  # ==========================================
+  postgres:
+    image: pgvector/pgvector:pg15 # Inclui a extensão de vetores ativada
+    container_name: postgres_elite
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_elite
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ==========================================
+  # CAMADA DE INTELIGÊNCIA LOCAL (MICRO-MODELOS)
+  # Estes são placeholders para APIs Python reais.
+  # Na versão de produção, você substituirá pelas imagens reais construídas a partir de Dockerfiles Python.
+  # ==========================================
+
+  # GLiNER: Extração de Entidades
+  gliner_service:
+    build:
+      context: ../services/gliner_service
+    container_name: gliner_api
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - MODEL_NAME=urchade/gliner_multi-v2.1
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # TextStat & Presidio: Filtro e PII
+  security_service:
+    build:
+      context: ../services/security_service
+    container_name: security_api
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    networks:
+      - elite_network
+
+  # TCH-Sentiment
+  sentiment_service:
+    build:
+      context: ../services/sentiment_service
+    container_name: sentiment_api
+    restart: unless-stopped
+    ports:
+      - "8003:8000"
+    networks:
+      - elite_network
+
+  # FastEmbed & BGE-Reranker
+  rag_service:
+    build:
+      context: ../services/rag_service
+    container_name: rag_api
+    restart: unless-stopped
+    ports:
+      - "8004:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 3G # Requer mais RAM para modelos de ranking
+
+  # Whisper (Speech to text)
+  whisper_service:
+    build:
+      context: ../services/whisper_service
+    container_name: whisper_api
+    restart: unless-stopped
+    ports:
+      - "8005:9000"
+    environment:
+      - MODEL=base
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # LLaVA (Vision analysis)
+  llava_service:
+    build:
+      context: ../services/llava_service
+    container_name: llava_api
+    restart: unless-stopped
+    ports:
+      - "8006:8000"
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 4G # Requer bastante recurso
+
+  # ==========================================
+  # OBSERVABILIDADE & BI
+  # ==========================================
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: langfuse_elite
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
+      - SALT=${LANGFUSE_SALT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+
+  metabase:
+    image: metabase/metabase:v0.52.1
+    container_name: metabase_elite
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=${POSTGRES_DB}
+      - MB_DB_PORT=5432
+      - MB_DB_USER=${POSTGRES_USER}
+      - MB_DB_PASS=${POSTGRES_PASSWORD}
+      - MB_DB_HOST=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ==========================================
+  # CAMADA MCP — MODEL CONTEXT PROTOCOL SERVERS
+  # Cada servidor expõe ferramentas tipadas para o agente LLM.
+  # O n8n usa o nó "MCP Client" (SSE transport) para conectar a cada um.
+  # ==========================================
+
+  mcp_chatwoot:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:chatwoot
+    container_name: mcp_chatwoot
+    restart: unless-stopped
+    ports:
+      - "8787:8787"   # SSE endpoint
+    environment:
+      - CHATWOOT_URL=${CHATWOOT_URL}
+      - CHATWOOT_API_KEY=${CHATWOOT_API_KEY}
+      - CHATWOOT_ACCOUNT_ID=${CHATWOOT_ACCOUNT_ID}
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  mcp_fipe:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:fipe
+    container_name: mcp_fipe
+    restart: unless-stopped
+    ports:
+      - "8788:8787"   # SSE endpoint
+    environment:
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  mcp_stock:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:stock
+    container_name: mcp_stock
+    restart: unless-stopped
+    ports:
+      - "8789:8787"   # SSE endpoint
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - RAG_SERVICE_URL=http://rag_api:8000
+      - MCP_TRANSPORT=sse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  mcp_scoring:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:scoring
+    container_name: mcp_scoring
+    restart: unless-stopped
+    ports:
+      - "8790:8787"   # SSE endpoint
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - MCP_TRANSPORT=sse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  mcp_whisper_vision:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:whisper-vision
+    container_name: mcp_whisper_vision
+    restart: unless-stopped
+    ports:
+      - "8791:8787"   # SSE endpoint
+    environment:
+      - WHISPER_URL=http://whisper_api:9000
+      - VISION_URL=http://vision_api:8000
+      - MCP_TRANSPORT=sse
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  mcp_analytics:
+    build:
+      context: ../mcp-servers
+      dockerfile: Dockerfile
+    command: npm run dev:analytics
+    container_name: mcp_analytics
+    restart: unless-stopped
+    ports:
+      - "8792:8787"   # SSE endpoint
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - LANGFUSE_HOST=http://langfuse_elite:3000
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MCP_TRANSPORT=sse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  n8n_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  elite_network:
+    driver: bridge

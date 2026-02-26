@@ -22,8 +22,9 @@ import (
 	"whatpro-hub/internal/seeds"
 
 	// Swagger
-	"github.com/gofiber/swagger"
 	_ "whatpro-hub/docs" // Import docs for side effects
+
+	"github.com/gofiber/swagger"
 )
 
 // @title WhatPro Hub API
@@ -87,6 +88,14 @@ func main() {
 		TimeFormat: "2006-01-02 15:04:05",
 	}))
 
+	// 3. Security Headers (Helmet)
+	app.Use(middleware.Helmet())
+
+	// 4. Input Sanitizer (query param XSS/SQLi protection)
+	sanitizer := middleware.NewSanitizer()
+	sanitizer.SkipPaths = []string{"/webhooks", "/health"}
+	app.Use(sanitizer.Middleware())
+
 	// Initialize database connection (needed for handlers)
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
@@ -99,11 +108,11 @@ func main() {
 		log.Printf("Warning: Failed to connect to Redis: %v - Rate limiting will use in-memory storage", err)
 	}
 
-	// 3. IP-Based Rate Limiting (BEFORE authentication)
+	// 5. IP-Based Rate Limiting (BEFORE authentication)
 	// Protects against DDoS and brute force attacks
 	rateLimitPerMinute := getEnvInt("RATE_LIMIT_PER_MINUTE", 100)
 	useRedisStorage := rdb != nil && cfg.Env == "production"
-	
+
 	app.Use(middleware.NewIPRateLimiter(middleware.RateLimiterConfig{
 		MaxPerMinute: rateLimitPerMinute,
 		UseRedis:     useRedisStorage,
@@ -111,7 +120,7 @@ func main() {
 		SkipPaths:    []string{"/health", "/metrics"},
 	}))
 
-	// 4. CORS Configuration
+	// 6. CORS Configuration
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: cfg.CORSOrigins,
 		AllowOriginsFunc: func(origin string) bool {
@@ -126,8 +135,8 @@ func main() {
 				return false
 			}
 			// In development, allow localhost
-			return strings.HasPrefix(origin, "http://localhost") || 
-			       strings.HasPrefix(origin, "http://127.0.0.1")
+			return strings.HasPrefix(origin, "http://localhost") ||
+				strings.HasPrefix(origin, "http://127.0.0.1")
 		},
 		AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization,X-Request-ID",
@@ -178,9 +187,9 @@ func main() {
 	webhookHandler := handlers.NewWebhookHandler(cfg)
 	webhooks := api.Group("/webhooks")
 	webhooks.Post("/chatwoot", webhookHandler.HandleChatwootWebhook)
-	webhooks.Post("/evolution/:instanceId", h.HandleEvolutionWebhook) 
+	webhooks.Post("/evolution/:instanceId", h.HandleEvolutionWebhook)
 	webhooks.Post("/asaas", h.HandleAsaasWebhook) // NEW: Payment Webhook
-	webhooks.Post("/test", webhookHandler.HandleWebhookTest) 
+	webhooks.Post("/test", webhookHandler.HandleWebhookTest)
 
 	// =========================================================================
 	// Protected routes (requires JWT authentication)
@@ -203,6 +212,16 @@ func main() {
 	accounts.Post("/", middleware.RequireRole("super_admin"), h.CreateAccount)
 	accounts.Put("/:id", middleware.RequireRole("admin", "super_admin"), h.UpdateAccount)
 	accounts.Post("/sync", middleware.RequireRole("super_admin"), h.SyncAccounts)
+	accounts.Get("/:id/stats", middleware.RequireRole("agent", "supervisor", "admin", "super_admin"), h.GetAccountStats)
+
+	// Providers (moved to protected — requires JWT + tenant isolation)
+	providers := protected.Group("/accounts/:accountId/providers", middleware.RequireAccountAccess())
+	providers.Get("/", h.ListProviders)
+	providers.Get("/:id", h.GetProvider)
+	providers.Post("/", h.CreateProvider)
+	providers.Put("/:id", h.UpdateProvider)
+	providers.Delete("/:id", h.DeleteProvider)
+	providers.Get("/:id/health", h.CheckProviderHealth)
 
 	// Teams
 	teams := protected.Group("/accounts/:accountId/teams", middleware.RequireAccountAccess())
@@ -224,15 +243,6 @@ func main() {
 	users.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateUser)
 	users.Put("/:id", middleware.RequireRole("admin", "super_admin"), h.UpdateUser)
 	users.Delete("/:id", middleware.RequireRole("admin", "super_admin"), h.DeleteUser)
-
-	// Providers
-	providers := protected.Group("/accounts/:accountId/providers", middleware.RequireAccountAccess())
-	providers.Get("/", h.ListProviders)
-	providers.Get("/:id", h.GetProvider)
-	providers.Post("/", middleware.RequireRole("admin", "super_admin"), h.CreateProvider)
-	providers.Put("/:id", middleware.RequireRole("admin", "super_admin"), h.UpdateProvider)
-	providers.Delete("/:id", middleware.RequireRole("admin", "super_admin"), h.DeleteProvider)
-	providers.Get("/:id/health", h.CheckProviderHealth)
 
 	// Kanban - Boards
 	boards := protected.Group("/accounts/:accountId/boards", middleware.RequireAccountAccess())
@@ -264,21 +274,21 @@ func main() {
 	// =========================================================================
 	chatHandler := handlers.NewChatHandler(h.ChatService)
 	chat := protected.Group("/accounts/:accountId/chat", middleware.RequireAccountAccess())
-	
+
 	// Rooms
 	chat.Get("/rooms", chatHandler.ListRooms)
 	chat.Post("/rooms", chatHandler.CreateRoom)
 	chat.Get("/rooms/:roomId", chatHandler.GetRoom)
-	
+
 	// Members
 	chat.Post("/rooms/:roomId/members", chatHandler.AddMember)
 	chat.Delete("/rooms/:roomId/members/:userId", chatHandler.RemoveMember)
-	
+
 	// Messages
 	chat.Get("/rooms/:roomId/messages", chatHandler.ListMessages)
 	chat.Post("/rooms/:roomId/messages", chatHandler.SendMessage)
 	chat.Delete("/messages/:messageId", chatHandler.DeleteMessage)
-	
+
 	// Read Status
 	chat.Post("/rooms/:roomId/read", chatHandler.MarkAsRead)
 	// Mentions

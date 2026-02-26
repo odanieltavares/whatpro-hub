@@ -1,12 +1,18 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+
+// Debug: Verify app entry
+console.log('🚀 App starting...');
+
 import { RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { router } from './router'
 import { AuthProvider } from '@/context/AuthContext'
 import { tokenStorage } from '@/utils/tokenStorage'
 import './index.css'
 import './chatwoot-theme.css'
+import './i18n'
 
 const queryClient = new QueryClient()
 
@@ -77,6 +83,8 @@ initPostMessageBridge()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      {/* Global toast notifications — position top-right with rich colors */}
+      <Toaster richColors position="top-right" />
       <AuthProvider>
         <RouterProvider router={router} />
       </AuthProvider>

@@ -1,0 +1,10 @@
+--- package.json2026-02-26
++++ package.json2026-02-26
+@@ -10,6 +10,7 @@
+     "dev:scoring": "cd scoring && npm run dev",
+     "dev:stock": "cd stock && npm run dev",
+     "dev:analytics": "cd analytics && npm run dev",
++    "dev:scheduling": "cd scheduling && npm run dev",
+     "start:all": "npm-run-all --parallel start:*",
+     "dev:all": "npm-run-all --parallel dev:*"
+   },

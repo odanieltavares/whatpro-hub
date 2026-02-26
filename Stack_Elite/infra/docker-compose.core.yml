@@ -1,0 +1,180 @@
+version: "3.8"
+
+# ==========================================
+# ELITE SDR — CORE INFRASTRUCTURE
+# Serviços de base: orquestração, banco de dados, cache e observabilidade.
+# Comando: docker-compose -f docker-compose.core.yml up -d
+# ==========================================
+
+services:
+
+  # ── ORQUESTRAÇÃO ─────────────────────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: elite_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_HOST=elite_postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_ENFORCEMENT_MAX_EXECUTION_TIME=60
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=elite_redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      elite_postgres:
+        condition: service_healthy
+      elite_redis:
+        condition: service_started
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.5"
+
+  n8n_worker:
+    image: n8nio/n8n:latest
+    container_name: elite_n8n_worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_HOST=elite_postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=elite_redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    depends_on:
+      elite_postgres:
+        condition: service_healthy
+      elite_redis:
+        condition: service_started
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.5"
+
+  # ── BANCO DE DADOS ──────────────────────────────────────────────────────────
+  elite_postgres:
+    image: pgvector/pgvector:pg15
+    container_name: elite_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+  # ── CACHE ───────────────────────────────────────────────────────────────────
+  elite_redis:
+    image: redis:alpine
+    container_name: elite_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ── OBSERVABILIDADE ─────────────────────────────────────────────────────────
+  elite_langfuse:
+    image: langfuse/langfuse:2
+    container_name: elite_langfuse
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@elite_postgres:5432/langfuse
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
+      - SALT=${LANGFUSE_SALT}
+    depends_on:
+      elite_postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+
+  elite_metabase:
+    image: metabase/metabase:v0.52.1
+    container_name: elite_metabase
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - MB_DB_TYPE=postgres
+      - MB_DB_DBNAME=${POSTGRES_DB}
+      - MB_DB_PORT=5432
+      - MB_DB_USER=${POSTGRES_USER}
+      - MB_DB_PASS=${POSTGRES_PASSWORD}
+      - MB_DB_HOST=elite_postgres
+    depends_on:
+      elite_postgres:
+        condition: service_healthy
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+volumes:
+  n8n_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  elite_network:
+    driver: bridge
+    name: elite_network
