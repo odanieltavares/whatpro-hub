@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Building2, Car, Users, Zap, Calendar, Settings, Sun, Moon, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Building2, Car, Users, Zap, Calendar, Settings, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, GitBranch } from 'lucide-react'
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/tenants',   icon: Building2,       label: 'Lojas (Tenants)' },
   { to: '/inventory', icon: Car,             label: 'Estoque' },
   { to: '/leads',     icon: Users,           label: 'Leads & Conversas' },
-  { 
+  { to: '/funnel',    icon: GitBranch,       label: 'Funil Avançado' },
+  {
     to: '/scheduling', icon: Calendar,       label: 'Agendamentos',
     subItems: [
       { to: '/scheduling?status=DONE', label: 'Concluídos' },

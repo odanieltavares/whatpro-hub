@@ -6,8 +6,10 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
 import pg from "pg";
+import express from "express";
 
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -142,5 +144,39 @@ server.tool(
   }
 );
 
-server.connect(new StdioServerTransport());
-console.log("🟢 mcp-scoring running");
+
+// ── Startup (SSE for Docker/n8n, stdio for local dev) ─────────────────────────
+
+if (process.env.MCP_TRANSPORT === "stdio") {
+  const stdioTransport = new StdioServerTransport();
+  server.connect(stdioTransport);
+  console.log("🟢 mcp-scoring running [stdio]");
+} else {
+  const app = express();
+  app.use(express.json());
+
+  const transports = new Map<string, SSEServerTransport>();
+
+  app.get("/sse", async (req, res) => {
+    const transport = new SSEServerTransport("/message", res);
+    transports.set(transport.sessionId, transport);
+    res.on("close", () => transports.delete(transport.sessionId));
+    await server.connect(transport);
+  });
+
+  app.post("/message", async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    const transport = transports.get(sessionId);
+    if (!transport) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    await transport.handlePostMessage(req, res);
+  });
+
+  const PORT = parseInt(process.env.PORT ?? "8787", 10);
+  app.listen(PORT, () => {
+    console.log(`🟢 mcp-scoring running [SSE] → http://localhost:${PORT}/sse`);
+  });
+}
+

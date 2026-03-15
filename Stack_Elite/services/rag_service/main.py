@@ -1,16 +1,45 @@
 """
-RAG Service — Stub FastAPI
-Provides: /embed (text → vector) + /rerank (reorder documents by relevance)
-Stub: returns random float vectors of dimension 384 (BGE-small compatible)
-Production: fastembed + bge-reranker-base models
+RAG Service — Implementação Real
+FastEmbed (BGE-small-en-v1.5 ou BAAI/bge-m3 multilingual) + BGE-Reranker para reranking.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import random
+import os
 
-app = FastAPI(title="RAG Service", version="1.0.0")
+app = FastAPI(title="RAG Service", version="2.0.0")
 
-VECTOR_DIM = 384  # Compatible with FastEmbed / BGE-small
+VECTOR_DIM = int(os.getenv("VECTOR_DIM", "384"))
+EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
+RERANK_MODEL = os.getenv("RERANK_MODEL", "BAAI/bge-reranker-base")
+
+_embed_model = None
+_rerank_model = None
+
+
+def get_embed_model():
+    global _embed_model
+    if _embed_model is None:
+        try:
+            from fastembed import TextEmbedding
+            print(f"[RAG] Carregando modelo de embedding: {EMBED_MODEL}")
+            _embed_model = TextEmbedding(model_name=EMBED_MODEL)
+            print("[RAG] Embedding model carregado!")
+        except ImportError:
+            raise RuntimeError("Biblioteca 'fastembed' não instalada. Execute: pip install fastembed")
+    return _embed_model
+
+
+def get_rerank_model():
+    global _rerank_model
+    if _rerank_model is None:
+        try:
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+            print(f"[RAG] Carregando reranker: {RERANK_MODEL}")
+            _rerank_model = TextCrossEncoder(model_name=RERANK_MODEL)
+            print("[RAG] Reranker carregado!")
+        except ImportError:
+            raise RuntimeError("Biblioteca 'fastembed' não instalada. Execute: pip install fastembed")
+    return _rerank_model
 
 
 class EmbedRequest(BaseModel):
@@ -20,7 +49,7 @@ class EmbedRequest(BaseModel):
 class EmbedResponse(BaseModel):
     vector: list[float]
     dimensions: int
-    source: str = "stub"
+    source: str = "fastembed-real"
 
 
 class RerankRequest(BaseModel):
@@ -35,29 +64,61 @@ class RerankResponse(BaseModel):
 
 @app.post("/embed", response_model=EmbedResponse)
 def embed_text(req: EmbedRequest):
-    """Returns a random unit-normalized vector (stub).
-    In production, this calls FastEmbed's inference for the text.
-    """
-    raw = [random.gauss(0, 1) for _ in range(VECTOR_DIM)]
-    # Normalize to unit vector (cosine similarity will still work)
-    magnitude = sum(x ** 2 for x in raw) ** 0.5
-    vector = [round(x / magnitude, 6) for x in raw]
-    return EmbedResponse(vector=vector, dimensions=VECTOR_DIM)
+    try:
+        model = get_embed_model()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # fastembed retorna um generator — convertemos para lista
+    embeddings = list(model.embed([req.text]))
+    vector = embeddings[0].tolist()
+
+    return EmbedResponse(
+        vector=vector,
+        dimensions=len(vector),
+        source="fastembed-real",
+    )
 
 
 @app.post("/rerank", response_model=RerankResponse)
 def rerank_documents(req: RerankRequest):
-    """Passes documents through with stub scores (stub).
-    In production, this calls BGE-Reranker which scores each (query, doc) pair.
-    We add a dummy relevance_score for downstream consumption.
-    """
-    docs = req.documents[:req.top_k]
-    # Assign decreasing stub scores
-    for i, doc in enumerate(docs):
-        doc["relevance_score"] = round(0.98 - (i * 0.08), 3)
-    return RerankResponse(reranked=docs)
+    try:
+        reranker = get_rerank_model()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    if not req.documents:
+        return RerankResponse(reranked=[])
+
+    # Extrai textos dos documentos
+    texts = [doc.get("text", doc.get("descricao_tecnica", str(doc))) for doc in req.documents]
+
+    # Rerank via cross-encoder
+    scores = list(reranker.rerank(req.query, texts))
+
+    # Ordena pelo score (descrescente)
+    scored_docs = sorted(
+        zip(req.documents, scores),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    # Adiciona relevance_score e retorna top_k
+    reranked = []
+    for doc, score in scored_docs[:req.top_k]:
+        doc_copy = dict(doc)
+        doc_copy["relevance_score"] = round(float(score), 4)
+        reranked.append(doc_copy)
+
+    return RerankResponse(reranked=reranked)
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "rag-stub", "vector_dim": VECTOR_DIM}
+    return {
+        "status": "ok",
+        "service": "rag-real",
+        "embed_model": EMBED_MODEL,
+        "rerank_model": RERANK_MODEL,
+        "vector_dim": VECTOR_DIM,
+    }

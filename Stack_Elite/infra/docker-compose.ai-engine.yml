@@ -3,113 +3,179 @@ version: "3.8"
 # ==========================================
 # ELITE SDR — OSS AI ENGINE (Motor de Inteligência OSS)
 # APIs de IA Open-Source que alimentam o pipeline do SDR Agent.
-# Whisper, LLaVA, GLiNER, Presidio, Sentiment, RAG/FastEmbed.
+# Whisper (faster-whisper), LLaVA (Ollama), GLiNER, Presidio, Sentiment (distilbert), RAG (fastembed).
 #
 # Pré-requisito: docker-compose.core.yml deve estar UP (rede elite_network).
 # Comando: docker-compose -f docker-compose.ai-engine.yml up -d
 # ==========================================
 
+x-ai-base: &ai-base
+  restart: unless-stopped
+  networks:
+    - elite_network
+
 services:
 
   # ── GLiNER: Extração de Entidades do Lead ─────────────────────────────────
-  # Detecta: VEÍCULO_INTERESSE, ORÇAMENTO, INTENÇÃO, etc.
   ai_gliner:
+    <<: *ai-base
     build:
       context: ../services/gliner_service
+    image: elite_ai_gliner:latest
     container_name: ai_gliner
-    restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       - MODEL_NAME=urchade/gliner_multi-v2.1
-    networks:
-      - elite_network
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-
-  # ── PRESIDIO + TextStat: Segurança, Anti-Spam e Mascaramento PII ──────────
-  # Mascara CPF, CNPJ, e-mail, telefone antes do LLM.
-  ai_security:
-    build:
-      context: ../services/security_service
-    container_name: ai_security
-    restart: unless-stopped
-    ports:
-      - "8002:8000"
-    networks:
-      - elite_network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-
-  # ── Análise de Sentimento ─────────────────────────────────────────────────
-  # Detecta frustração/urgência para acionar alertas de SLA.
-  ai_sentiment:
-    build:
-      context: ../services/sentiment_service
-    container_name: ai_sentiment
-    restart: unless-stopped
-    ports:
-      - "8003:8000"
-    networks:
-      - elite_network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-
-  # ── FastEmbed + BGE-Reranker: RAG Engine ─────────────────────────────────
-  # Gera embeddings para o pgvector e reordena resultados de busca semântica.
-  ai_rag:
-    build:
-      context: ../services/rag_service
-    container_name: ai_rag
-    restart: unless-stopped
-    ports:
-      - "8004:8000"
-    networks:
-      - elite_network
     deploy:
       resources:
         limits:
           memory: 3G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s   # Modelo leva ~2 min para baixar na primeira vez
 
-  # ── Whisper: Transcrição de Áudio ─────────────────────────────────────────
-  # Converte áudios de WhatsApp (OGG) para texto antes do pipeline.
+  # ── PRESIDIO + Regex BR: Segurança e Mascaramento PII ──────────────────────
+  ai_security:
+    <<: *ai-base
+    build:
+      context: ../services/security_service
+    image: elite_ai_security:latest
+    container_name: ai_security
+    ports:
+      - "127.0.0.1:8002:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Análise de Sentimento (distilbert-multilingual) ─────────────────────
+  ai_sentiment:
+    <<: *ai-base
+    build:
+      context: ../services/sentiment_service
+    image: elite_ai_sentiment:latest
+    container_name: ai_sentiment
+    ports:
+      - "127.0.0.1:8003:8000"
+    environment:
+      - SENTIMENT_MODEL=lxyuan/distilbert-base-multilingual-cased-sentiments-student
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # ── FastEmbed + BGE-Reranker: RAG Engine ─────────────────────────────────
+  ai_rag:
+    <<: *ai-base
+    build:
+      context: ../services/rag_service
+    image: elite_ai_rag:latest
+    container_name: ai_rag
+    ports:
+      - "127.0.0.1:8004:8000"
+    environment:
+      - EMBED_MODEL=BAAI/bge-small-en-v1.5
+      - RERANK_MODEL=BAAI/bge-reranker-base
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ── faster-whisper: Transcrição de Áudio WhatsApp ─────────────────────────
   ai_whisper:
+    <<: *ai-base
     build:
       context: ../services/whisper_service
+    image: elite_ai_whisper:latest
     container_name: ai_whisper
-    restart: unless-stopped
     ports:
-      - "9000:9000"
+      - "127.0.0.1:9000:9000"
     environment:
-      - MODEL=base
-    networks:
-      - elite_network
+      - MODEL=base         # Opções: tiny | base | small | medium | large-v3
+      - DEVICE=cpu         # Use cuda se houver GPU NVIDIA
+      - COMPUTE_TYPE=int8  # int8 para CPU; float16 para GPU
     deploy:
       resources:
         limits:
           memory: 2G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # ── LLaVA: Análise Multimodal de Imagens ─────────────────────────────────
-  # Analisa fotos enviadas pelo cliente (veículo de troca, documentos, etc).
+  # ── LLaVA via Ollama: Análise Multimodal de Imagens ─────────────────────
   ai_llava:
+    <<: *ai-base
     build:
       context: ../services/llava_service
+    image: elite_ai_llava:latest
     container_name: ai_llava
+    ports:
+      - "127.0.0.1:8006:8000"
+    environment:
+      - OLLAMA_URL=http://elite_ollama:11434
+      - LLAVA_MODEL=llava
+    depends_on:
+      - elite_ollama
+    deploy:
+      resources:
+        limits:
+          memory: 512M    # O peso pesado está no Ollama, não aqui
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  # ── Ollama: Servidor de Modelos LLM Local ─────────────────────────────────
+  # Hospeda o modelo LLaVA para análise de imagens.
+  # Execute: docker-compose -f docker-compose.ai-engine.yml exec elite_ollama ollama pull llava
+  elite_ollama:
+    image: ollama/ollama:latest
+    container_name: elite_ollama
     restart: unless-stopped
     ports:
-      - "8006:8000"
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
     networks:
       - elite_network
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G   # LLaVA requer ~5-7GB de RAM
+    # Para GPU NVIDIA, descomente:
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+
+volumes:
+  ollama_data:
 
 networks:
   elite_network:

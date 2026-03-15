@@ -1,11 +1,24 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import { Calendar, Clock, User, Car, CheckCircle2, XCircle, AlertCircle, Phone, ArrowRight, Building2, Handshake, ChevronLeft, ChevronRight, UserCheck } from 'lucide-react';
 import { SlidePanel } from '../components/SlidePanel';
 import { Calendar as BigCalendar, dateFnsLocalizer, View, Views } from 'react-big-calendar';
 import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, format, parse, startOfWeek, getDay, isSameMonth, isSameWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+const API_URL = 'http://localhost:4000/api/v1';
+const DEV_TOKEN_KEY = 'elite_dev_token';
+
+async function getDevToken(): Promise<string> {
+  const cached = sessionStorage.getItem(DEV_TOKEN_KEY);
+  if (cached) return cached;
+  const res = await axios.get(`${API_URL}/auth/dev-token`);
+  const token = res.data?.data?.token ?? '';
+  if (token) sessionStorage.setItem(DEV_TOKEN_KEY, token);
+  return token;
+}
 
 // Configuração do DateFns para o React Big Calendar
 const locales = {
@@ -28,6 +41,7 @@ interface Appointment {
   salesperson: string;
   date: string;
   time: string;
+  db_date?: string; // Para parsing real
   status: 'SCHEDULED' | 'DONE' | 'NO_SHOW' | 'CANCELED' | 'CHECK_IN' | 'IN_PROGRESS';
   has_downpayment: boolean;
 }
@@ -41,52 +55,15 @@ const STATUS_CONFIG = {
   CANCELED: { icon: XCircle, color: 'text-red-500 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500', bgCal: '#7f1d1d', label: 'Cancelado' }
 };
 
-// Dados Simulados Expandidos (Alta Intensidade p/ Testes de UX) Lincado a Leads reais.
-const MOCK_APPOINTMENTS: Appointment[] = [
-  // --- ONTENS / PASSADO ---
-  { id: "u-p1", client_name: "Silvia Lima (Lead FB)", client_phone: "(21) 98877-6655", vehicle: "Hyundai Creta", tenant: "Mega Veículos", salesperson: "A Definir", date: "Ontem", time: "09:30", status: "DONE", has_downpayment: false },
-  { id: "u-p2", client_name: "Kauan Rocha (Web)", client_phone: "(31) 97766-5544", vehicle: "Peugeot Tiggo 8", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Ontem", time: "13:00", status: "NO_SHOW", has_downpayment: true },
-  { id: "u-p3", client_name: "Leticia Souza", client_phone: "(11) 99333-4444", vehicle: "Honda Civic", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje-2", time: "10:00", status: "DONE", has_downpayment: true },
-  { id: "u-p4", client_name: "Bruno Almeida (Lead Insta)", client_phone: "(41) 91111-2222", vehicle: "Polo Highline", tenant: "Auto Premium Elite", salesperson: "Roberto Mendes", date: "Hoje-3", time: "15:00", status: "CANCELED", has_downpayment: false },
-  { id: "u-p5", client_name: "Ricardo Mendes", client_phone: "(31) 95555-1111", vehicle: "Tracker Volcano", tenant: "Mega Veículos", salesperson: "Carlos Vendedor", date: "Ontem", time: "16:00", status: "DONE", has_downpayment: false },
-  
-  // --- HOJE (Massivo para overlaps) ---
-  { id: "u-1", client_name: "João Silva (OLX)", client_phone: "(11) 98888-1111", vehicle: "Corolla Cross XRE", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Hoje", time: "08:00", status: "IN_PROGRESS", has_downpayment: true },
-  { id: "u-2", client_name: "Maria Costa", client_phone: "(21) 97777-2222", vehicle: "Honda HR-V Platinum", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje", time: "08:00", status: "SCHEDULED", has_downpayment: false }, // Overlap 08:00
-  { id: "u-3", client_name: "Carla Matos (Lead Google)", client_phone: "(31) 96111-2222", vehicle: "VW Nivus Highline", tenant: "Mega Veículos", salesperson: "Roberto Mendes", date: "Hoje", time: "08:30", status: "DONE", has_downpayment: false }, // Overlap 08:30
-  
-  { id: "u-c1", client_name: "Fernando Dias", client_phone: "(51) 91111-5555", vehicle: "Toyota Yaris", tenant: "Seminovo Rápido", salesperson: "Carlos Vendedor", date: "Hoje", time: "09:00", status: "CHECK_IN", has_downpayment: false }, // CHECK_IN Hoje
-  { id: "u-c2", client_name: "Amanda Lima", client_phone: "(11) 92222-7777", vehicle: "Jeep Renegade", tenant: "Auto Premium Elite", salesperson: "Roberto Mendes", date: "Hoje", time: "09:30", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-c3", client_name: "Jorge Campos", client_phone: "(11) 94444-1234", vehicle: "Fiat Strada", tenant: "Mega Veículos", salesperson: "Ana Consultora", date: "Hoje", time: "09:30", status: "CANCELED", has_downpayment: false }, 
-  
-  { id: "u-4", client_name: "Pedro Alves (Portal)", client_phone: "(31) 96666-3333", vehicle: "Jeep Compass Touring", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Hoje", time: "14:00", status: "DONE", has_downpayment: false },
-  { id: "u-5", client_name: "Lucas Ferreira (Web)", client_phone: "(41) 95555-4444", vehicle: "VW T-Cross", tenant: "Mega Veículos", salesperson: "A Definir", date: "Hoje", time: "14:00", status: "NO_SHOW", has_downpayment: false }, // Overlap 14:00
-  { id: "u-6", client_name: "Sonia Marques", client_phone: "(51) 99999-5555", vehicle: "BMW X1", tenant: "Auto Premium Elite", salesperson: "Roberto Mendes", date: "Hoje", time: "16:30", status: "CANCELED", has_downpayment: true },
-  { id: "u-6b", client_name: "Felipe Nunes (Web Motors)", client_phone: "(21) 97777-6666", vehicle: "Volvo XC60", tenant: "Mega Veículos", salesperson: "Ana Consultora", date: "Hoje", time: "16:30", status: "CHECK_IN", has_downpayment: false }, // Overlap 16:30
-  
-  // --- AMANHÃ E FUTUROS ---
-  { id: "u-7", client_name: "Antonio Dias (Tiktok)", client_phone: "(61) 94444-3333", vehicle: "Porsche Macan", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Amanhã", time: "09:00", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-8", client_name: "Juliana Silva", client_phone: "(71) 93333-2222", vehicle: "Audi Q3", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Amanhã", time: "09:00", status: "SCHEDULED", has_downpayment: false }, // Overlap amanhã transp
-  { id: "u-9", client_name: "Beto Soares (Indicação)", client_phone: "(81) 92222-1111", vehicle: "Fiat Taos", tenant: "Mega Veículos", salesperson: "Roberto Mendes", date: "Amanhã", time: "11:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-10", client_name: "Monica Rute", client_phone: "(91) 91111-0000", vehicle: "Renault Fastback", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Amanhã", time: "11:00", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-11", client_name: "Renato Diniz", client_phone: "(11) 90000-9999", vehicle: "Ford Pulse", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Amanhã", time: "15:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-11b", client_name: "Carolina G.", client_phone: "(21) 91234-9999", vehicle: "VW Jetta", tenant: "Mega Veículos", salesperson: "A Definir", date: "Amanhã", time: "15:30", status: "SCHEDULED", has_downpayment: false },
-  
-  // --- OUTROS DIAS (+2, +3, etc) ---
-  { id: "u-f1", client_name: "Luiza Melo", client_phone: "(41) 96655-4433", vehicle: "Cherry Kicks", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje+2", time: "10:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f2", client_name: "Douglas T (Icarros)", client_phone: "(51) 95544-3322", vehicle: "Chevrolet Bronco", tenant: "Mega Veículos", salesperson: "Roberto Mendes", date: "Hoje+2", time: "14:00", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-f3", client_name: "Henrique F.", client_phone: "(11) 91234-5678", vehicle: "BYD Dolphin", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Hoje+3", time: "09:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f3b", client_name: "Vitoria Regis", client_phone: "(11) 90000-1111", vehicle: "Peugeot 208", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje+3", time: "09:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f4", client_name: "Viviane K. (Web)", client_phone: "(31) 98765-4321", vehicle: "GWM Ora", tenant: "Auto Premium Elite", salesperson: "A Definir", date: "Hoje+4", time: "11:00", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-f5", client_name: "Rafael B. (Lead Insta)", client_phone: "(11) 99887-7665", vehicle: "Fiat Toro", tenant: "Mega Veículos", salesperson: "Roberto Mendes", date: "Hoje+5", time: "10:30", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f6", client_name: "Vanessa W.", client_phone: "(21) 91122-3344", vehicle: "Jeep Commander", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje+6", time: "16:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f7", client_name: "Leandro L.", client_phone: "(21) 95555-5555", vehicle: "Audi A4", tenant: "Auto Premium Elite", salesperson: "Carlos Vendedor", date: "Hoje+7", time: "09:30", status: "SCHEDULED", has_downpayment: true },
-  { id: "u-f8", client_name: "Marcio G.", client_phone: "(11) 96666-4444", vehicle: "BMW 320i", tenant: "Mega Veículos", salesperson: "Roberto Mendes", date: "Hoje+8", time: "13:00", status: "SCHEDULED", has_downpayment: false },
-  { id: "u-f9", client_name: "Renata F.", client_phone: "(41) 93333-3333", vehicle: "Mercedes X1", tenant: "Seminovo Rápido", salesperson: "Ana Consultora", date: "Hoje+10", time: "10:00", status: "SCHEDULED", has_downpayment: false },
-];
+// Parsing Data Strings
+const parseDateString = (dateStr: string, timeStr: string, dbDate?: string) => {
+  if (dbDate) {
+    const start = new Date(dbDate);
+    const end = new Date(start);
+    end.setHours(start.getHours() + 1);
+    return { start, end };
+  }
 
-// O React Big Calendar espera objetos Date nativos com start e end.
-const parseDateString = (dateStr: string, timeStr: string) => {
   const now = new Date();
   let targetDate = new Date();
   
@@ -99,13 +76,15 @@ const parseDateString = (dateStr: string, timeStr: string) => {
     const days = parseInt(dateStr.split('-')[1], 10);
     targetDate = subDays(now, days);
   }
-  // Se for "Hoje" ou indefinido, mantem today
+  // Se for "Hoje" ou indefinido, mantem today mas com relogio do timeStr
 
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  targetDate.setHours(hours, minutes, 0, 0);
+  if (timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    targetDate.setHours(hours, minutes, 0, 0);
+  }
   
   const endDate = new Date(targetDate);
-  endDate.setHours(hours + 1); // 1 hora de duração padrão
+  endDate.setHours(targetDate.getHours() + 1); // 1 hora de duração padrão
   
   return { start: targetDate, end: endDate };
 };
@@ -173,6 +152,7 @@ const customEventPropGetter = (_event: any) => {
 
 export default function Scheduling() {
 
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [view, setView] = useState<View>(Views.WEEK);
   const [date, setDate] = useState(new Date());
   const [displayMode, setDisplayMode] = useState<'CALENDAR'|'LIST'>('LIST'); // Padrao = Lista
@@ -202,6 +182,38 @@ export default function Scheduling() {
   const [searchParams] = useSearchParams();
   const statusFilter = searchParams.get('status');
 
+  // Integracao Backend Real
+  const fetchAppointments = async () => {
+    try {
+      const token = await getDevToken();
+      const res = await axios.get(`${API_URL}/accounts/9999/appointments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.success && res.data.data.appointments) {
+        const apps = res.data.data.appointments.map((a: any) => ({
+          id: a.id,
+          client_name: a.client_name,
+          client_phone: a.client_phone,
+          vehicle: a.vehicle,
+          tenant: a.tenant,
+          salesperson: a.salesperson,
+          date: format(new Date(a.scheduled_at), 'dd/MM/yyyy'),
+          time: format(new Date(a.scheduled_at), 'HH:mm'),
+          db_date: a.scheduled_at,
+          status: a.status,
+          has_downpayment: a.has_downpayment
+        }));
+        setAppointments(apps);
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
   // Ao alterar o filtro no submenu, sempre volta a visao pra 'Mês' 
   useEffect(() => {
     if (statusFilter) {
@@ -211,13 +223,13 @@ export default function Scheduling() {
 
   // Deriva extrações para Select de Vendedores
   const salespersons = useMemo(() => {
-    const list = MOCK_APPOINTMENTS.map(a => a.salesperson);
+    const list = appointments.map(a => a.salesperson);
     return Array.from(new Set(list));
-  }, []);
+  }, [appointments]);
 
   // Transforma os agendamentos nos eventos do tipo 'BigCalendar'
   const calendarEvents = useMemo(() => {
-    return MOCK_APPOINTMENTS
+    return appointments
       .filter(app => {
         const matchSales = salespersonFilter === 'ALL' || app.salesperson === salespersonFilter;
         const matchStatus = !statusFilter || app.status === statusFilter;
@@ -227,7 +239,7 @@ export default function Scheduling() {
         return matchSales && matchStatus && matchSearch;
       })
       .map(app => {
-        const { start, end } = parseDateString(app.date, app.time);
+        const { start, end } = parseDateString(app.date, app.time, app.db_date);
         return {
           ...app,
           title: `${app.client_name} - ${app.vehicle}`,
@@ -249,8 +261,50 @@ export default function Scheduling() {
     }).sort((a, b) => a.start.getTime() - b.start.getTime()); // Organiza por ordem de horário
   }, [calendarEvents, view, date]);
 
+  // Handlers para Interação Completa
+  const handleUpdateStatus = async (id: string, newStatus: Appointment['status']) => {
+    try {
+      const token = await getDevToken();
+      await axios.patch(`${API_URL}/accounts/9999/appointments/${id}/status`, { status: newStatus }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAppointments(prev => 
+        prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
+      );
+      setSelectedApp(prev => prev && prev.id === id ? { ...prev, status: newStatus } : prev);
+    } catch (error) {
+      console.error("Falha ao atualizar o status:", error);
+      alert("Falha na atualização. Verifique a conexão com o servidor.");
+    }
+  };
+
   const handleSelectEvent = (event: any) => {
     setSelectedApp(event.resource);
+  };
+
+  const handleNewAppointment = async () => {
+    // Nova visita via API
+    const newAppointmentMock = {
+      client_name: "Novo Cliente Lead",
+      client_phone: "(11) 99999-9999",
+      vehicle: "Carro Teste (Backend)",
+      tenant: "Loja Virtual Elite",
+      salesperson: "Vendedor Demo",
+      scheduled_at: new Date().toISOString(),
+      status: "SCHEDULED",
+      has_downpayment: false
+    };
+
+    try {
+      const token = await getDevToken();
+      await axios.post(`${API_URL}/accounts/9999/appointments`, newAppointmentMock, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchAppointments();
+      alert("Mock Appointment criado! O banco foi atualizado corretamente e a página sincronizada.");
+    } catch(err) {
+      alert("Erro ao criar novo agendamento");
+    }
   };
 
   return (
@@ -263,6 +317,16 @@ export default function Scheduling() {
         
         {/* Toggle Mode and Global Filters */}
         <div className="flex flex-col lg:flex-row gap-3 items-center">
+            
+            <button 
+              onClick={handleNewAppointment}
+              className="w-full lg:w-auto bg-blue-600 hover:bg-blue-500 text-white font-medium py-1.5 px-4 rounded-lg transition-colors shadow-sm text-sm flex items-center justify-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Novo Agendamento
+            </button>
+            <div className="hidden lg:block h-6 w-px bg-gray-300 dark:bg-gray-800 mx-1"></div>
+
             {/* Toggle Button Group Shadcn-style */}
             <div className="flex bg-gray-100 dark:bg-[#1c1c1f] p-0.5 rounded-lg border border-gray-300 dark:border-gray-800 shadow-inner w-full sm:w-auto">
               <button 
@@ -522,18 +586,50 @@ export default function Scheduling() {
             </div>
 
             <div className="pt-6 flex flex-col gap-3">
-               <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Check-in (Registrar Chegada)
-               </button>
-               <div className="flex gap-3">
-                 <button className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors text-sm">
-                    Reagendar
+               {selectedApp.status === 'IN_PROGRESS' ? (
+                 <button 
+                   onClick={() => handleUpdateStatus(selectedApp.id, 'DONE')}
+                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-emerald-500/20 flex justify-center items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Finalizar Atendimento
                  </button>
-                 <button className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/30 text-gray-700 dark:text-gray-300 font-medium py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors text-sm">
-                    Cancelar
+               ) : selectedApp.status === 'DONE' ? (
+                 <button 
+                   disabled
+                   className="w-full bg-emerald-500/50 text-white cursor-not-allowed font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Atendimento Finalizado
                  </button>
-               </div>
+               ) : selectedApp.status === 'CANCELED' ? (
+                 <button 
+                   disabled
+                   className="w-full bg-red-500/50 text-white cursor-not-allowed font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                    <XCircle className="w-5 h-5" />
+                    Agendamento Cancelado
+                 </button>
+               ) : (
+                 <button 
+                   onClick={() => handleUpdateStatus(selectedApp.id, 'IN_PROGRESS')}
+                   className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Check-in (Registrar Chegada)
+                 </button>
+               )}
+
+               {(selectedApp.status === 'SCHEDULED' || selectedApp.status === 'CHECK_IN' || selectedApp.status === 'NO_SHOW') && (
+                 <div className="flex gap-3">
+                   <button 
+                     onClick={() => { alert('Abriria o seletor de Data/Hora para reagendamento.'); handleUpdateStatus(selectedApp.id, 'SCHEDULED'); }}
+                     className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors text-sm">
+                      Reagendar
+                   </button>
+                   <button 
+                     onClick={() => handleUpdateStatus(selectedApp.id, 'CANCELED')}
+                     className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-500/20 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/30 text-gray-700 dark:text-gray-300 font-medium py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors text-sm">
+                      Cancelar
+                   </button>
+                 </div>
+               )}
             </div>
           </div>
         )}

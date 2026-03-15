@@ -3,18 +3,18 @@ version: "3.8"
 # ==========================================
 # ELITE SDR — CORE INFRASTRUCTURE
 # Serviços de base: orquestração, banco de dados, cache e observabilidade.
-# Comando: docker-compose -f docker-compose.core.yml up -d
+# Comando: make core
 # ==========================================
 
 services:
 
   # ── ORQUESTRAÇÃO ─────────────────────────────────────────────────────────────
-  n8n:
-    image: n8nio/n8n:latest
+  elite_n8n:
+    image: n8nio/n8n:1.52.0            # Versão fixada — nunca use :latest em produção
     container_name: elite_n8n
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"          # Apenas localhost — Traefik expõe externamente
     environment:
       - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_PORT=5678
@@ -48,9 +48,20 @@ services:
         limits:
           memory: 2G
           cpus: "1.5"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
-  n8n_worker:
-    image: n8nio/n8n:latest
+  elite_n8n_worker:
+    image: n8nio/n8n:1.52.0
     container_name: elite_n8n_worker
     restart: unless-stopped
     command: worker
@@ -87,15 +98,14 @@ services:
 
   # ── BANCO DE DADOS ──────────────────────────────────────────────────────────
   elite_postgres:
-    image: pgvector/pgvector:pg15
+    image: pgvector/pgvector:pg15-0.7.0  # Versão fixada
     container_name: elite_postgres
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "15432:5432"
+    # SEGURANÇA: porta NÃO exposta ao host — apenas via elite_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -114,12 +124,11 @@ services:
 
   # ── CACHE ───────────────────────────────────────────────────────────────────
   elite_redis:
-    image: redis:alpine
+    image: redis:7.2-alpine             # Versão fixada
     container_name: elite_redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    ports:
-      - "16379:6379"
+    # SEGURANÇA: porta NÃO exposta ao host
     volumes:
       - redis_data:/data
     networks:
@@ -128,14 +137,19 @@ services:
       resources:
         limits:
           memory: 512M
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   # ── OBSERVABILIDADE ─────────────────────────────────────────────────────────
   elite_langfuse:
-    image: langfuse/langfuse:2
+    image: langfuse/langfuse:2.79.0     # Versão fixada
     container_name: elite_langfuse
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@elite_postgres:5432/langfuse
       - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
@@ -145,13 +159,18 @@ services:
         condition: service_healthy
     networks:
       - elite_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.langfuse.rule=Host(`langfuse.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.langfuse.tls.certresolver=letsencrypt"
+      - "traefik.http.services.langfuse.loadbalancer.server.port=3000"
 
   elite_metabase:
-    image: metabase/metabase:v0.52.1
+    image: metabase/metabase:v0.52.1    # Versão fixada
     container_name: elite_metabase
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     environment:
       - MB_DB_TYPE=postgres
       - MB_DB_DBNAME=${POSTGRES_DB}
@@ -168,11 +187,47 @@ services:
       resources:
         limits:
           memory: 2G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.metabase.rule=Host(`bi.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+
+  # ── REVERSE PROXY (Traefik) ─────────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.1.6               # Versão fixada
+    container_name: elite_traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/letsencrypt
+    networks:
+      - elite_network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
 volumes:
   n8n_data:
   postgres_data:
   redis_data:
+  traefik_certs:
 
 networks:
   elite_network:

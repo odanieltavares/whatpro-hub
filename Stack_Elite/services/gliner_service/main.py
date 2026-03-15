@@ -1,14 +1,28 @@
 """
-GLiNER Service — Stub FastAPI
-Extração de entidades com GLiNER Zero-Shot.
-Em produção: carrega o modelo urchade/gliner_multi-v2.1
-Em stub: retorna entidades parseadas por regex simples para testes.
+GLiNER Service — Implementação Real
+Extração de entidades Zero-Shot com o modelo urchade/gliner_multi-v2.1.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import re, random
+import os
 
-app = FastAPI(title="GLiNER Service", version="1.0.0")
+app = FastAPI(title="GLiNER Service", version="2.0.0")
+
+# Carrega modelo na inicialização (lazy se LAZY_LOAD=true)
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        try:
+            from gliner import GLiNER
+            model_name = os.getenv("MODEL_NAME", "urchade/gliner_multi-v2.1")
+            print(f"[GLiNER] Carregando modelo: {model_name}")
+            _model = GLiNER.from_pretrained(model_name)
+            print("[GLiNER] Modelo carregado com sucesso!")
+        except ImportError:
+            raise RuntimeError("Biblioteca 'gliner' não instalada. Execute: pip install gliner")
+    return _model
 
 
 class ExtractRequest(BaseModel):
@@ -20,75 +34,39 @@ class ExtractRequest(BaseModel):
 class ExtractResponse(BaseModel):
     entities: dict
     confidence: float
-    source: str = "stub"
-
-
-# Mapeamentos heurísticos simples para o stub
-INTENT_KEYWORDS = {
-    "COMPRA_0KM":    ["0km", "zero km", "novo", "lançamento"],
-    "SEMINOVO":      ["seminovo", "usado", "segunda mão", "km rodado"],
-    "TROCA":         ["troca", "retoma", "meu carro", "dar entrada com"],
-    "SIMULACAO_FINANCIAMENTO": ["financiamento", "parcela", "crédito", "entrada"],
-    "CONSULTA_PRECO": ["quanto", "valor", "preço", "custo"],
-    "AGENDAMENTO":   ["visita", "ver pessoal", "ir até", "agendar"],
-}
-
-BUDGET_PATTERN = re.compile(
-    r"(até|por volta de|em torno de|máximo|limite)\s*R?\$?\s*(\d[\d.,]*)\s*(mil|k)?",
-    re.IGNORECASE
-)
-
-VEHICLE_PATTERN = re.compile(
-    r"(Corolla|HB20|Onix|Polo|T-Cross|Compass|Tracker|Cruze|Kwid|Pulse|Argo|Cronos|Creta|Tucson|Renegade|Jeep|Toyota|Hyundai|Chevrolet|Volkswagen|Fiat|Renault|Ford|Honda|Citroën|Peugeot|Nissan|Caoa|RAM)",
-    re.IGNORECASE
-)
-
-
-def detect_intent(text: str) -> str:
-    lower = text.lower()
-    for intent, keys in INTENT_KEYWORDS.items():
-        if any(k in lower for k in keys):
-            return intent
-    return "CONSULTA_GERAL"
-
-
-def extract_budget(text: str) -> str | None:
-    m = BUDGET_PATTERN.search(text)
-    if not m:
-        return None
-    val = m.group(2).replace(".", "").replace(",", "")
-    suffix = " mil" if m.group(3) else ""
-    return f"R$ {val}{suffix}"
+    source: str = "gliner-real"
 
 
 @app.post("/extract", response_model=ExtractResponse)
 def extract_entities(req: ExtractRequest):
+    try:
+        model = get_model()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # Inferência real com GLiNER
+    predictions = model.predict_entities(req.text, req.labels, threshold=req.threshold)
+
+    # Agrupa por label — mantém a entidade com maior score
     entities: dict = {}
+    scores: dict = {}
+    for pred in predictions:
+        label = pred["label"]
+        text_val = pred["text"]
+        score = pred["score"]
+        if label not in scores or score > scores[label]:
+            entities[label] = text_val
+            scores[label] = score
 
-    if "INTENCAO" in req.labels:
-        entities["INTENCAO"] = detect_intent(req.text)
-
-    if "VEICULO_INTERESSE" in req.labels:
-        cars = VEHICLE_PATTERN.findall(req.text)
-        if cars:
-            entities["VEICULO_INTERESSE"] = cars[0]
-
-    if "VEICULO_TROCA" in req.labels:
-        troca_match = re.search(r"(troca|retoma|dar meu)\s+(.{3,40})", req.text, re.IGNORECASE)
-        if troca_match:
-            entities["VEICULO_TROCA"] = troca_match.group(2).strip()
-
-    if "ORCAMENTO" in req.labels:
-        budget = extract_budget(req.text)
-        if budget:
-            entities["ORCAMENTO"] = budget
+    avg_confidence = round(sum(scores.values()) / len(scores), 4) if scores else 0.0
 
     return ExtractResponse(
         entities=entities,
-        confidence=round(random.uniform(0.75, 0.97), 2),
+        confidence=avg_confidence,
+        source="gliner-real",
     )
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "gliner-stub"}
+    return {"status": "ok", "service": "gliner-real", "model": os.getenv("MODEL_NAME", "urchade/gliner_multi-v2.1")}
